@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import date
+from decimal import Decimal
+
 import pytest
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
+
+from apps.profiles.models import DailyProgress, Profile, WallSection
 
 
 @pytest.mark.django_db
@@ -192,3 +197,78 @@ class TestProfileAPI:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["is_active"] is True
+
+    def test_daily_ice_usage_success(self, api_client: APIClient) -> None:
+        """Test daily ice usage endpoint returns aggregated data."""
+        # Create profile
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+
+        # Create wall sections
+        section1 = WallSection.objects.create(
+            profile=profile,
+            section_name="Tower 1-2",
+            start_position=Decimal("0.00"),
+            target_length_feet=Decimal("500.00"),
+        )
+        section2 = WallSection.objects.create(
+            profile=profile,
+            section_name="Tower 2-3",
+            start_position=Decimal("500.00"),
+            target_length_feet=Decimal("500.00"),
+        )
+
+        # Create daily progress for same date
+        target_date = date(2025, 10, 15)
+        DailyProgress.objects.create(
+            wall_section=section1,
+            date=target_date,
+            feet_built=Decimal("12.50"),
+            ice_cubic_yards=Decimal("2437.50"),
+            cost_gold_dragons=Decimal("4631250.00"),
+        )
+        DailyProgress.objects.create(
+            wall_section=section2,
+            date=target_date,
+            feet_built=Decimal("16.25"),
+            ice_cubic_yards=Decimal("3168.75"),
+            cost_gold_dragons=Decimal("6020625.00"),
+        )
+
+        url = reverse("profile-daily-ice-usage", kwargs={"pk": profile.id})
+        response = api_client.get(url, {"date": "2025-10-15"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["profile_id"] == profile.id
+        assert response.data["profile_name"] == "Northern Watch"
+        assert response.data["date"] == "2025-10-15"
+        assert response.data["total_feet_built"] == "28.75"
+        assert response.data["total_ice_cubic_yards"] == "5606.25"
+        assert len(response.data["sections"]) == 2
+
+    def test_daily_ice_usage_no_data_for_date(self, api_client: APIClient) -> None:
+        """Test daily ice usage when no progress exists for given date."""
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+
+        url = reverse("profile-daily-ice-usage", kwargs={"pk": profile.id})
+        response = api_client.get(url, {"date": "2025-10-15"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["total_feet_built"] == "0.00"
+        assert response.data["total_ice_cubic_yards"] == "0.00"
+        assert response.data["sections"] == []
+
+    def test_daily_ice_usage_invalid_profile(self, api_client: APIClient) -> None:
+        """Test daily ice usage with non-existent profile returns 404."""
+        url = reverse("profile-daily-ice-usage", kwargs={"pk": 9999})
+        response = api_client.get(url, {"date": "2025-10-15"})
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_daily_ice_usage_missing_date_param(self, api_client: APIClient) -> None:
+        """Test daily ice usage without date parameter returns 400."""
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+
+        url = reverse("profile-daily-ice-usage", kwargs={"pk": profile.id})
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
