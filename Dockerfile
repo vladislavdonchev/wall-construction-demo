@@ -5,6 +5,10 @@ WORKDIR /app
 # Install uv package manager
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
+# Set uv environment variables for non-root container execution
+ENV UV_CACHE_DIR=/tmp/.uv-cache
+ENV UV_PROJECT_ENVIRONMENT=/app/.venv
+
 # Copy dependency files
 COPY pyproject.toml ./
 COPY uv.lock ./
