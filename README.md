@@ -21,6 +21,9 @@ From the orchestrator root:
 - `python.ver` - Python version requirement (3.12)
 - `.gitignore` - Git ignore patterns (.venv, uv.lock, build artifacts)
 - `scripts/run_tests.py` - Test runner script
+- `SPEC-DEMO.md` - Wall Construction API technical specification (Django backend)
+- `SPEC-DEMO-GUI.md` - Wall Construction GUI technical specification (React frontend)
+- `SPEC-DEMO-TDD.md` - Test-Driven Development specification (pytest, factories, coverage)
 - `README.md` - This file
 
 ## Development
