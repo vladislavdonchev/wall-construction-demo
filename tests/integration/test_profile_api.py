@@ -466,3 +466,117 @@ class TestProfileAPI:
         response = api_client.get(url, {"profile_ids": "1,2", "start_date": "2025-10-01"})
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_progress_via_profile_success(self, api_client: APIClient) -> None:
+        """Test creating progress via profile nested endpoint returns 201 with auto-calculated values."""
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        wall_section = WallSection.objects.create(
+            profile=profile,
+            section_name="Tower 1-2",
+            start_position=Decimal("0.00"),
+            target_length_feet=Decimal("500.00"),
+        )
+
+        url = reverse("profile-create-progress", kwargs={"pk": profile.id})
+        payload = {
+            "wall_section_id": wall_section.id,
+            "date": "2025-10-15",
+            "feet_built": 12.5,
+            "notes": "Clear weather, good progress",
+        }
+
+        response = api_client.post(url, payload, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert "id" in response.data
+        assert response.data["wall_section"] == wall_section.id
+        assert response.data["date"] == "2025-10-15"
+        assert response.data["feet_built"] == "12.50"
+        assert response.data["ice_cubic_yards"] == "2437.50"
+        assert response.data["cost_gold_dragons"] == "4631250.00"
+        assert response.data["notes"] == "Clear weather, good progress"
+        assert "created_at" in response.data
+
+    def test_create_progress_via_profile_validates_wall_section_ownership(self, api_client: APIClient) -> None:
+        """Test creating progress fails when wall_section does not belong to profile."""
+        profile1 = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile2 = Profile.objects.create(name="Eastern Defense", team_lead="Tormund")
+        wall_section = WallSection.objects.create(
+            profile=profile2,
+            section_name="Tower 5-6",
+            start_position=Decimal("0.00"),
+            target_length_feet=Decimal("500.00"),
+        )
+
+        url = reverse("profile-create-progress", kwargs={"pk": profile1.id})
+        payload = {
+            "wall_section_id": wall_section.id,
+            "date": "2025-10-15",
+            "feet_built": 12.5,
+        }
+
+        response = api_client.post(url, payload, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "wall_section_id" in response.data
+
+    def test_create_progress_via_profile_missing_wall_section_id(self, api_client: APIClient) -> None:
+        """Test creating progress without wall_section_id returns 400."""
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+
+        url = reverse("profile-create-progress", kwargs={"pk": profile.id})
+        payload = {
+            "date": "2025-10-15",
+            "feet_built": 12.5,
+        }
+
+        response = api_client.post(url, payload, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "wall_section_id" in response.data
+
+    def test_create_progress_via_profile_invalid_date_format(self, api_client: APIClient) -> None:
+        """Test creating progress with invalid date format returns 400."""
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        wall_section = WallSection.objects.create(
+            profile=profile,
+            section_name="Tower 1-2",
+            start_position=Decimal("0.00"),
+            target_length_feet=Decimal("500.00"),
+        )
+
+        url = reverse("profile-create-progress", kwargs={"pk": profile.id})
+        payload = {
+            "wall_section_id": wall_section.id,
+            "date": "2025/10/15",
+            "feet_built": 12.5,
+        }
+
+        response = api_client.post(url, payload, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "date" in response.data
+
+    def test_create_progress_via_profile_auto_calculates_ice_and_cost(self, api_client: APIClient) -> None:
+        """Test creating progress auto-calculates ice_cubic_yards and cost_gold_dragons."""
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        wall_section = WallSection.objects.create(
+            profile=profile,
+            section_name="Tower 1-2",
+            start_position=Decimal("0.00"),
+            target_length_feet=Decimal("500.00"),
+        )
+
+        url = reverse("profile-create-progress", kwargs={"pk": profile.id})
+        payload = {
+            "wall_section_id": wall_section.id,
+            "date": "2025-10-15",
+            "feet_built": 10.0,
+        }
+
+        response = api_client.post(url, payload, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["feet_built"] == "10.00"
+        assert response.data["ice_cubic_yards"] == "1950.00"
+        assert response.data["cost_gold_dragons"] == "3705000.00"

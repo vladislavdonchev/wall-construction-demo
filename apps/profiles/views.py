@@ -219,6 +219,42 @@ class ProfileViewSet(viewsets.ModelViewSet[Profile]):
         finally:
             aggregator.shutdown()
 
+    @action(detail=True, methods=["post"], url_path="progress")
+    def create_progress(self, request: Request, pk: int) -> Response:
+        """Create daily progress for a wall section under this profile."""
+        profile = get_object_or_404(Profile, pk=pk)
+
+        wall_section_id = request.data.get("wall_section_id")
+
+        if not wall_section_id:
+            return Response(
+                {"wall_section_id": ["This field is required."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate wall_section belongs to this profile
+        wall_section = get_object_or_404(WallSection, pk=wall_section_id)
+        if wall_section.profile_id != profile.id:
+            return Response(
+                {"wall_section_id": ["Wall section does not belong to this profile."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Prepare data for serializer (use wall_section instead of wall_section_id)
+        progress_data = {
+            "wall_section": wall_section_id,
+            "date": request.data.get("date"),
+            "feet_built": request.data.get("feet_built"),
+            "notes": request.data.get("notes", ""),
+        }
+
+        serializer = DailyProgressSerializer(data=progress_data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class WallSectionViewSet(viewsets.ModelViewSet[WallSection]):
     """ViewSet for WallSection CRUD operations."""
