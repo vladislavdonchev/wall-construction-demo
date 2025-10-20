@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from django.db import models
 
 
@@ -44,3 +46,43 @@ class WallSection(models.Model):
     def __str__(self) -> str:
         """Return string representation of wall section."""
         return f"{self.section_name} ({self.profile.name})"
+
+
+class DailyProgress(models.Model):
+    """Daily construction progress for a wall section."""
+
+    ICE_PER_FOOT = Decimal("195")  # cubic yards per linear foot
+    COST_PER_CUBIC_YARD = Decimal("1900")  # Gold Dragons per cubic yard
+
+    wall_section = models.ForeignKey(
+        WallSection,
+        on_delete=models.CASCADE,
+        related_name="daily_progress",
+    )
+    date = models.DateField()
+    feet_built = models.DecimalField(max_digits=10, decimal_places=2)
+    ice_cubic_yards = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="195 cubic yards per foot",
+    )
+    cost_gold_dragons = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        help_text="1900 Gold Dragons per cubic yard",
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "daily_progress"
+        unique_together = [["wall_section", "date"]]
+        ordering = ["-date"]
+        indexes = [
+            models.Index(fields=["date"]),
+            models.Index(fields=["wall_section", "date"]),
+        ]
+
+    def __str__(self) -> str:
+        """Return string representation of daily progress."""
+        return f"{self.wall_section.section_name}: {self.feet_built} ft on {self.date}"
