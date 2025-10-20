@@ -131,9 +131,9 @@ class ProfileViewSet(viewsets.ModelViewSet[Profile]):
         total_days = (end_date - start_date).days + 1
 
         # Calculate average cost per day
-        total_cost = aggregates["total_cost"]
+        total_cost = Decimal(str(aggregates["total_cost"]))
         record_count = aggregates["record_count"]
-        average_cost_per_day = total_cost / record_count if record_count > 0 else Decimal("0")
+        average_cost_per_day = (total_cost / record_count).quantize(Decimal("0.01")) if record_count > 0 else Decimal("0.00")
 
         # Build daily breakdown - only include days with actual progress
         daily_breakdown = []

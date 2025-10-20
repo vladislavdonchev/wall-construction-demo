@@ -92,6 +92,6 @@ class TestCostAggregatorService:
         aggregator.shutdown()
 
         assert len(results) == 1
-        assert results[0]["total_feet_built"] == "0"
-        assert results[0]["total_ice_cubic_yards"] == "0"
-        assert results[0]["total_cost_gold_dragons"] == "0"
+        assert results[0]["total_feet_built"] == "0.00"
+        assert results[0]["total_ice_cubic_yards"] == "0.00"
+        assert results[0]["total_cost_gold_dragons"] == "0.00"

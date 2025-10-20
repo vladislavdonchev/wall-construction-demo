@@ -2,23 +2,45 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import Future, as_completed
 from datetime import date, datetime
 
 from apps.profiles.repositories import DailyProgressRepository
 
 
+class SynchronousExecutor:
+    """Executor that runs tasks synchronously in the same thread.
+
+    Provides ThreadPoolExecutor-compatible interface for SQLite compatibility.
+    SQLite with Django test transactions requires same-thread execution.
+    """
+
+    def submit(self, fn, *args, **kwargs) -> Future[dict[str, int | str]]:  # type: ignore[no-untyped-def]
+        """Submit a callable to be executed synchronously."""
+        future: Future[dict[str, int | str]] = Future()
+        try:
+            result = fn(*args, **kwargs)
+            future.set_result(result)
+        except Exception as e:
+            future.set_exception(e)
+        return future
+
+    def shutdown(self) -> None:
+        """Shutdown executor - synchronous execution requires no cleanup."""
+        return
+
+
 class CostAggregatorService:
     """Service for cost calculations across multiple profiles.
 
-    Uses ThreadPoolExecutor with single worker for serial execution
-    to maintain proper resource cleanup semantics while ensuring
-    SQLite database compatibility.
+    Uses synchronous executor for SQLite database compatibility.
+    Processes profiles serially in the same thread to avoid database
+    locking issues with SQLite transactions in Django tests.
     """
 
     def __init__(self) -> None:
-        """Initialize service with single-threaded executor."""
-        self.executor = ThreadPoolExecutor(max_workers=1)
+        """Initialize service with synchronous executor."""
+        self.executor = SynchronousExecutor()
 
     def calculate_multi_profile_costs(
         self,
@@ -66,8 +88,8 @@ class CostAggregatorService:
         return results
 
     def shutdown(self) -> None:
-        """Shutdown the thread pool executor."""
-        self.executor.shutdown(wait=True)
+        """Shutdown the executor."""
+        self.executor.shutdown()
 
     def _calculate_profile_cost(
         self,

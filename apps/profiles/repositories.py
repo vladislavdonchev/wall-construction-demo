@@ -53,11 +53,12 @@ class DailyProgressRepository:
             record_count=Count("id"),
         )
 
-        # Explicit None handling - no implicit defaults
+        # Normalize all decimals to 2 decimal places
+        two_places = Decimal("0.01")
         return {
-            "total_feet": Decimal("0") if result["total_feet"] is None else result["total_feet"],
-            "total_ice": Decimal("0") if result["total_ice"] is None else result["total_ice"],
-            "total_cost": Decimal("0") if result["total_cost"] is None else result["total_cost"],
-            "avg_feet": Decimal("0") if result["avg_feet"] is None else result["avg_feet"],
+            "total_feet": (Decimal("0") if result["total_feet"] is None else result["total_feet"]).quantize(two_places),
+            "total_ice": (Decimal("0") if result["total_ice"] is None else result["total_ice"]).quantize(two_places),
+            "total_cost": (Decimal("0") if result["total_cost"] is None else result["total_cost"]).quantize(two_places),
+            "avg_feet": (Decimal("0") if result["avg_feet"] is None else result["avg_feet"]).quantize(two_places),
             "record_count": result["record_count"],
         }
