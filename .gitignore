@@ -2,5 +2,7 @@
 .venv/
 *.egg-info/
 
-# Package manager lock files
-uv.lock
+# Test artifacts
+.coverage
+__pycache__/
+*.pyc
