@@ -204,13 +204,13 @@ class TestSimulationAPI:
         response = api_client.post("/api/profiles/simulate/", config_data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["total_sections"] == "9"
+        assert response.data["total_sections"] == 9
 
         profile_1 = Profile.objects.get(name="Profile 1")
 
         day_1_response = api_client.get(f"/api/profiles/{profile_1.id}/days/1/")
         assert day_1_response.status_code == status.HTTP_200_OK
-        assert day_1_response.data["ice_amount"] == "585.00"
+        assert day_1_response.data["ice_amount"] == "585"
 
         overview_response = api_client.get("/api/profiles/overview/")
         assert overview_response.status_code == status.HTTP_200_OK

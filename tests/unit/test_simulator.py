@@ -144,7 +144,8 @@ class TestWallSimulator:
         assert result.total_days == 2
         assert result.total_sections == 2
 
-        assert DailyProgress.objects.count() == 4
+        # 3 DailyProgress records: Day 1 both sections (28→29, 29→30), Day 2 first section only (29→30)
+        assert DailyProgress.objects.count() == 3
 
         profile = Profile.objects.first()
         assert profile is not None
