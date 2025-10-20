@@ -1,0 +1,6 @@
+# Dependencies and environments
+.venv/
+*.egg-info/
+
+# Package manager lock files
+uv.lock
