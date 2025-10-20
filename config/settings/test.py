@@ -36,6 +36,7 @@ __all__ = [
     "SECRET_KEY",
     "STATIC_URL",
     "TEMPLATES",
+    "TESTING",
     "TIME_ZONE",
     "USE_I18N",
     "USE_TZ",
@@ -44,6 +45,9 @@ __all__ = [
 ]
 
 DEBUG = False
+
+# Flag to indicate test environment (disables threading for SQLite compatibility)
+TESTING = True
 
 DATABASES = {
     "default": {

@@ -22,8 +22,13 @@ class CostAggregatorService:
 
         Args:
             max_workers: Maximum worker threads. Defaults to settings.WORKER_POOL_SIZE.
+                        In test environment, uses 1 worker for SQLite compatibility.
         """
-        self.max_workers = max_workers if max_workers is not None else settings.WORKER_POOL_SIZE
+        # Use serial execution in test environment to avoid SQLite locking issues
+        if getattr(settings, "TESTING", False):
+            self.max_workers = 1
+        else:
+            self.max_workers = max_workers if max_workers is not None else settings.WORKER_POOL_SIZE
         self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
 
     def calculate_multi_profile_costs(
