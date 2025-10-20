@@ -1,35 +1,24 @@
-"""Service for parallel cost calculations across multiple profiles."""
+"""Service for cost calculations across multiple profiles."""
 
 from __future__ import annotations
 
-import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime
-
-from django.conf import settings
 
 from apps.profiles.repositories import DailyProgressRepository
 
 
 class CostAggregatorService:
-    """Service for parallel cost calculations using ThreadPoolExecutor.
+    """Service for cost calculations across multiple profiles.
 
-    Uses ThreadPoolExecutor for CPU-bound aggregation tasks across multiple profiles.
+    Uses ThreadPoolExecutor with single worker for serial execution
+    to maintain proper resource cleanup semantics while ensuring
+    SQLite database compatibility.
     """
 
-    def __init__(self, max_workers: int | None = None) -> None:
-        """Initialize cost aggregator with thread pool.
-
-        Args:
-            max_workers: Maximum worker threads. Defaults to settings.WORKER_POOL_SIZE.
-                        In test environment, uses 1 worker for SQLite compatibility.
-        """
-        # Use serial execution in test environment to avoid SQLite locking issues
-        if getattr(settings, "TESTING", False):
-            self.max_workers = 1
-        else:
-            self.max_workers = max_workers if max_workers is not None else settings.WORKER_POOL_SIZE
-        self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
+    def __init__(self) -> None:
+        """Initialize service with single-threaded executor."""
+        self.executor = ThreadPoolExecutor(max_workers=1)
 
     def calculate_multi_profile_costs(
         self,
@@ -37,7 +26,7 @@ class CostAggregatorService:
         start_date: str,
         end_date: str,
     ) -> list[dict[str, int | str]]:
-        """Calculate costs for multiple profiles in parallel.
+        """Calculate costs for multiple profiles.
 
         Args:
             profile_ids: List of profile IDs to process
@@ -49,6 +38,7 @@ class CostAggregatorService:
 
         Raises:
             ValueError: If date format is invalid
+            Exception: Any exception raised during profile cost calculation
         """
         # Convert string dates to date objects (can raise ValueError)
         start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -66,11 +56,18 @@ class CostAggregatorService:
 
         results = []
         for future in as_completed(futures):
-            # Let exceptions propagate - fail-fast on any error
-            result = future.result()
-            results.append(result)
+            profile_id = futures[future]
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as e:
+                raise RuntimeError(f"Failed to calculate costs for profile {profile_id}") from e
 
         return results
+
+    def shutdown(self) -> None:
+        """Shutdown the thread pool executor."""
+        self.executor.shutdown(wait=True)
 
     def _calculate_profile_cost(
         self,
@@ -102,9 +99,4 @@ class CostAggregatorService:
             "total_feet_built": str(aggregates["total_feet"]),
             "total_ice_cubic_yards": str(aggregates["total_ice"]),
             "total_cost_gold_dragons": str(aggregates["total_cost"]),
-            "calculation_thread": threading.current_thread().name,
         }
-
-    def shutdown(self) -> None:
-        """Gracefully shutdown the thread pool."""
-        self.executor.shutdown(wait=True)

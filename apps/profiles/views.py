@@ -179,7 +179,7 @@ class ProfileViewSet(viewsets.ModelViewSet[Profile]):
 
     @action(detail=False, methods=["get"], url_path="bulk-cost-overview")
     def bulk_cost_overview(self, request: Request) -> Response:
-        """Calculate costs for multiple profiles in parallel using ThreadPoolExecutor."""
+        """Calculate costs for multiple profiles."""
         profile_ids_str = request.query_params.get("profile_ids")
         start_date = request.query_params.get("start_date")
         end_date = request.query_params.get("end_date")

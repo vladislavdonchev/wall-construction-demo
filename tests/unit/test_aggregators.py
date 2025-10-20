@@ -13,7 +13,7 @@ from apps.profiles.services.aggregators import CostAggregatorService
 
 @pytest.mark.django_db
 class TestCostAggregatorService:
-    """Test CostAggregatorService parallel cost calculations."""
+    """Test CostAggregatorService cost calculations."""
 
     def test_calculate_multi_profile_costs_single_profile(self) -> None:
         """Test calculating costs for a single profile."""
@@ -44,7 +44,7 @@ class TestCostAggregatorService:
         assert results[0]["total_cost_gold_dragons"] == "3705000.00"
 
     def test_calculate_multi_profile_costs_multiple_profiles(self) -> None:
-        """Test calculating costs for multiple profiles in parallel."""
+        """Test calculating costs for multiple profiles."""
         profile1 = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
         profile2 = Profile.objects.create(name="Eastern Defense", team_lead="Tormund")
         section1 = WallSection.objects.create(
@@ -95,29 +95,3 @@ class TestCostAggregatorService:
         assert results[0]["total_feet_built"] == "0"
         assert results[0]["total_ice_cubic_yards"] == "0"
         assert results[0]["total_cost_gold_dragons"] == "0"
-
-    def test_calculate_multi_profile_costs_uses_thread_pool(self) -> None:
-        """Test that parallel calculation uses ThreadPoolExecutor."""
-        profile1 = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
-        profile2 = Profile.objects.create(name="Eastern Defense", team_lead="Tormund")
-
-        aggregator = CostAggregatorService(max_workers=2)
-        results = aggregator.calculate_multi_profile_costs([profile1.id, profile2.id], "2025-10-01", "2025-10-01")
-        aggregator.shutdown()
-
-        assert len(results) == 2
-        # Verify each result has a calculation_thread field
-        assert all("calculation_thread" in r for r in results)
-
-    def test_calculate_multi_profile_costs_custom_worker_count(self) -> None:
-        """Test creating aggregator with custom worker pool size."""
-        aggregator = CostAggregatorService(max_workers=8)
-        assert aggregator.max_workers == 8
-        aggregator.shutdown()
-
-    def test_calculate_multi_profile_costs_default_worker_count(self) -> None:
-        """Test creating aggregator with default worker pool size from settings."""
-        aggregator = CostAggregatorService()
-        # Should use WORKER_POOL_SIZE from settings (4)
-        assert aggregator.max_workers == 4
-        aggregator.shutdown()
