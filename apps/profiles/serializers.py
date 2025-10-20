@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+from typing import cast
+
 from rest_framework import serializers
 
-from apps.profiles.models import Profile, WallSection
+from apps.profiles.models import DailyProgress, Profile, WallSection
+from apps.profiles.services.calculators import IceUsageCalculator
 
 
 class ProfileSerializer(serializers.ModelSerializer[Profile]):
@@ -30,3 +34,34 @@ class WallSectionSerializer(serializers.ModelSerializer[WallSection]):
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
+
+
+class DailyProgressSerializer(serializers.ModelSerializer[DailyProgress]):
+    """Serializer for DailyProgress model with auto-calculation of ice and cost."""
+
+    class Meta:
+        model = DailyProgress
+        fields = [
+            "id",
+            "wall_section",
+            "date",
+            "feet_built",
+            "ice_cubic_yards",
+            "cost_gold_dragons",
+            "notes",
+            "created_at",
+        ]
+        read_only_fields = ["id", "ice_cubic_yards", "cost_gold_dragons", "created_at"]
+
+    def create(self, validated_data: dict[str, object]) -> DailyProgress:
+        """Create DailyProgress with auto-calculated ice_cubic_yards and cost_gold_dragons."""
+        calculator = IceUsageCalculator()
+
+        feet_built = cast(Decimal, validated_data["feet_built"])
+        ice_cubic_yards = calculator.calculate_ice_usage(feet_built)
+        cost_gold_dragons = calculator.calculate_daily_cost(ice_cubic_yards)
+
+        validated_data["ice_cubic_yards"] = ice_cubic_yards
+        validated_data["cost_gold_dragons"] = cost_gold_dragons
+
+        return super().create(validated_data)
