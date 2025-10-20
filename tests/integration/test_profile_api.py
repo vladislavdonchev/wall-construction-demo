@@ -272,3 +272,100 @@ class TestProfileAPI:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_cost_overview_success(self, api_client: APIClient) -> None:
+        """Test cost overview endpoint returns aggregated data for date range."""
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        section = WallSection.objects.create(
+            profile=profile,
+            section_name="Tower 1-2",
+            start_position=Decimal("0.00"),
+            target_length_feet=Decimal("500.00"),
+        )
+
+        DailyProgress.objects.create(
+            wall_section=section,
+            date=date(2025, 10, 1),
+            feet_built=Decimal("10.00"),
+            ice_cubic_yards=Decimal("1950.00"),
+            cost_gold_dragons=Decimal("3705000.00"),
+        )
+        DailyProgress.objects.create(
+            wall_section=section,
+            date=date(2025, 10, 2),
+            feet_built=Decimal("15.00"),
+            ice_cubic_yards=Decimal("2925.00"),
+            cost_gold_dragons=Decimal("5557500.00"),
+        )
+        DailyProgress.objects.create(
+            wall_section=section,
+            date=date(2025, 10, 3),
+            feet_built=Decimal("20.00"),
+            ice_cubic_yards=Decimal("3900.00"),
+            cost_gold_dragons=Decimal("7410000.00"),
+        )
+
+        url = reverse("profile-cost-overview", kwargs={"pk": profile.id})
+        response = api_client.get(url, {"start_date": "2025-10-01", "end_date": "2025-10-03"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["profile_id"] == profile.id
+        assert response.data["profile_name"] == "Northern Watch"
+        assert response.data["date_range"]["start"] == "2025-10-01"
+        assert response.data["date_range"]["end"] == "2025-10-03"
+        assert response.data["summary"]["total_days"] == 3
+        assert response.data["summary"]["total_feet_built"] == "45.00"
+        assert response.data["summary"]["total_ice_cubic_yards"] == "8775.00"
+        assert response.data["summary"]["total_cost_gold_dragons"] == "16672500.00"
+        assert response.data["summary"]["average_feet_per_day"] == "15.00"
+        assert response.data["summary"]["average_cost_per_day"] == "5557500.00"
+        assert len(response.data["daily_breakdown"]) == 3
+
+    def test_cost_overview_no_data_for_range(self, api_client: APIClient) -> None:
+        """Test cost overview when no progress exists for given date range."""
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+
+        url = reverse("profile-cost-overview", kwargs={"pk": profile.id})
+        response = api_client.get(url, {"start_date": "2025-10-01", "end_date": "2025-10-15"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["summary"]["total_feet_built"] == "0.00"
+        assert response.data["summary"]["total_ice_cubic_yards"] == "0.00"
+        assert response.data["summary"]["total_cost_gold_dragons"] == "0.00"
+        assert response.data["summary"]["average_feet_per_day"] == "0.00"
+        assert response.data["summary"]["average_cost_per_day"] == "0.00"
+        assert response.data["daily_breakdown"] == []
+
+    def test_cost_overview_invalid_profile(self, api_client: APIClient) -> None:
+        """Test cost overview with non-existent profile returns 404."""
+        url = reverse("profile-cost-overview", kwargs={"pk": 9999})
+        response = api_client.get(url, {"start_date": "2025-10-01", "end_date": "2025-10-15"})
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_cost_overview_missing_start_date_param(self, api_client: APIClient) -> None:
+        """Test cost overview without start_date parameter returns 400."""
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+
+        url = reverse("profile-cost-overview", kwargs={"pk": profile.id})
+        response = api_client.get(url, {"end_date": "2025-10-15"})
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_cost_overview_missing_end_date_param(self, api_client: APIClient) -> None:
+        """Test cost overview without end_date parameter returns 400."""
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+
+        url = reverse("profile-cost-overview", kwargs={"pk": profile.id})
+        response = api_client.get(url, {"start_date": "2025-10-01"})
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_cost_overview_invalid_date_format(self, api_client: APIClient) -> None:
+        """Test cost overview with invalid date format returns 400."""
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+
+        url = reverse("profile-cost-overview", kwargs={"pk": profile.id})
+        response = api_client.get(url, {"start_date": "2025/10/01", "end_date": "2025-10-15"})
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
