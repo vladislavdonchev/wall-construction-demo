@@ -369,3 +369,100 @@ class TestProfileAPI:
         response = api_client.get(url, {"start_date": "2025/10/01", "end_date": "2025-10-15"})
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_bulk_cost_overview_success(self, api_client: APIClient) -> None:
+        """Test bulk cost overview endpoint processes multiple profiles in parallel."""
+        profile1 = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile2 = Profile.objects.create(name="Eastern Defense", team_lead="Tormund")
+        section1 = WallSection.objects.create(
+            profile=profile1,
+            section_name="Tower 1-2",
+            start_position=Decimal("0.00"),
+            target_length_feet=Decimal("500.00"),
+        )
+        section2 = WallSection.objects.create(
+            profile=profile2,
+            section_name="Tower 5-6",
+            start_position=Decimal("0.00"),
+            target_length_feet=Decimal("500.00"),
+        )
+
+        DailyProgress.objects.create(
+            wall_section=section1,
+            date=date(2025, 10, 1),
+            feet_built=Decimal("10.00"),
+            ice_cubic_yards=Decimal("1950.00"),
+            cost_gold_dragons=Decimal("3705000.00"),
+        )
+        DailyProgress.objects.create(
+            wall_section=section2,
+            date=date(2025, 10, 1),
+            feet_built=Decimal("20.00"),
+            ice_cubic_yards=Decimal("3900.00"),
+            cost_gold_dragons=Decimal("7410000.00"),
+        )
+
+        url = reverse("profile-bulk-cost-overview")
+        response = api_client.get(
+            url,
+            {
+                "profile_ids": f"{profile1.id},{profile2.id}",
+                "start_date": "2025-10-01",
+                "end_date": "2025-10-01",
+            },
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 2
+        profile_ids = {r["profile_id"] for r in response.data["results"]}
+        assert profile_ids == {profile1.id, profile2.id}
+
+    def test_bulk_cost_overview_single_profile(self, api_client: APIClient) -> None:
+        """Test bulk cost overview with single profile."""
+        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        section = WallSection.objects.create(
+            profile=profile,
+            section_name="Tower 1-2",
+            start_position=Decimal("0.00"),
+            target_length_feet=Decimal("500.00"),
+        )
+
+        DailyProgress.objects.create(
+            wall_section=section,
+            date=date(2025, 10, 1),
+            feet_built=Decimal("10.00"),
+            ice_cubic_yards=Decimal("1950.00"),
+            cost_gold_dragons=Decimal("3705000.00"),
+        )
+
+        url = reverse("profile-bulk-cost-overview")
+        response = api_client.get(
+            url,
+            {"profile_ids": str(profile.id), "start_date": "2025-10-01", "end_date": "2025-10-01"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["profile_id"] == profile.id
+        assert response.data["results"][0]["total_feet_built"] == "10.00"
+
+    def test_bulk_cost_overview_missing_profile_ids(self, api_client: APIClient) -> None:
+        """Test bulk cost overview without profile_ids parameter returns 400."""
+        url = reverse("profile-bulk-cost-overview")
+        response = api_client.get(url, {"start_date": "2025-10-01", "end_date": "2025-10-01"})
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_bulk_cost_overview_missing_start_date(self, api_client: APIClient) -> None:
+        """Test bulk cost overview without start_date parameter returns 400."""
+        url = reverse("profile-bulk-cost-overview")
+        response = api_client.get(url, {"profile_ids": "1,2", "end_date": "2025-10-01"})
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_bulk_cost_overview_missing_end_date(self, api_client: APIClient) -> None:
+        """Test bulk cost overview without end_date parameter returns 400."""
+        url = reverse("profile-bulk-cost-overview")
+        response = api_client.get(url, {"profile_ids": "1,2", "start_date": "2025-10-01"})
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST

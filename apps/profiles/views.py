@@ -19,6 +19,7 @@ from apps.profiles.serializers import (
     ProfileSerializer,
     WallSectionSerializer,
 )
+from apps.profiles.services.aggregators import CostAggregatorService
 
 
 class ProfileViewSet(viewsets.ModelViewSet[Profile]):
@@ -175,6 +176,48 @@ class ProfileViewSet(viewsets.ModelViewSet[Profile]):
                 "daily_breakdown": daily_breakdown,
             }
         )
+
+    @action(detail=False, methods=["get"], url_path="bulk-cost-overview")
+    def bulk_cost_overview(self, request: Request) -> Response:
+        """Calculate costs for multiple profiles in parallel using ThreadPoolExecutor."""
+        profile_ids_str = request.query_params.get("profile_ids")
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+
+        if not profile_ids_str:
+            return Response(
+                {"error": "profile_ids parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not start_date:
+            return Response(
+                {"error": "start_date parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not end_date:
+            return Response(
+                {"error": "end_date parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Parse comma-separated profile IDs
+        try:
+            profile_ids = [int(pid.strip()) for pid in profile_ids_str.split(",")]
+        except ValueError:
+            return Response(
+                {"error": "profile_ids must be comma-separated integers"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Use CostAggregatorService for parallel processing
+        aggregator = CostAggregatorService()
+        try:
+            results = aggregator.calculate_multi_profile_costs(profile_ids, start_date, end_date)
+            return Response({"results": results})
+        finally:
+            aggregator.shutdown()
 
 
 class WallSectionViewSet(viewsets.ModelViewSet[WallSection]):
