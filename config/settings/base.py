@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+CONTAINER_MARKER = Path("/app")
 
 SECRET_KEY = "django-insecure-demo-key-replace-in-production"
 
@@ -46,10 +47,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+# Database configuration
+# For containerized deployments (Docker/HuggingFace Spaces):
+#   Use /tmp/db.sqlite3 (writable temp directory, resets on restart)
+# For local development:
+#   Use BASE_DIR/db.sqlite3 (persistent across runs)
+DB_PATH = Path("/tmp/db.sqlite3") if CONTAINER_MARKER.exists() else BASE_DIR / "db.sqlite3"
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": DB_PATH,
     }
 }
 
