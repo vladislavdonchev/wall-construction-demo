@@ -36,6 +36,16 @@ class WallSection(models.Model):
     section_name = models.CharField(max_length=255)
     start_position = models.DecimalField(max_digits=10, decimal_places=2)
     target_length_feet = models.DecimalField(max_digits=10, decimal_places=2)
+    initial_height = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Initial height in feet (0-30) for simulation",
+    )
+    current_height = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Current height in feet during simulation",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

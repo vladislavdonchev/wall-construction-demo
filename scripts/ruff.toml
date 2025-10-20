@@ -26,6 +26,10 @@ select = [
     "Q",   # flake8-quotes
 ]
 
+ignore = [
+    "SIM108",  # Disable ternary conversion - conflicts with explicit if/else requirement
+]
+
 [lint.mccabe]
 max-complexity = 10
 
