@@ -2,8 +2,6 @@
 """Test runner for demo project (no tests yet)."""
 from __future__ import annotations
 
-import sys
-
 
 def main() -> int:
     """Run tests - currently none exist."""

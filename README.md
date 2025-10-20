@@ -15,9 +15,13 @@ From the orchestrator root:
 
 - `main.py` - Minimal demo script showing module initialization
 - `__init__.py` - Python package marker
+- `module_setup.py` - Environment setup using uv package manager
 - `pyproject.toml` - Project dependencies and tool configuration
 - `pytest.ini` - Test configuration
 - `python.ver` - Python version requirement (3.12)
+- `.gitignore` - Git ignore patterns (.venv, uv.lock, build artifacts)
+- `scripts/run_tests.py` - Test runner script
+- `README.md` - This file
 
 ## Development
 

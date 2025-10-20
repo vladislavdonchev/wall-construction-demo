@@ -24,9 +24,6 @@ dev = [
 requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-py-modules = []
-
 [tool.mypy]
 python_version = "3.12"
 warn_unused_ignores = true
