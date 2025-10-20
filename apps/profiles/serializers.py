@@ -7,8 +7,8 @@ from typing import cast
 
 from rest_framework import serializers
 
+from apps.profiles.constants import COST_PER_CUBIC_YARD, ICE_PER_FOOT
 from apps.profiles.models import DailyProgress, Profile, WallSection
-from apps.profiles.services.calculators import IceUsageCalculator
 
 
 class ProfileSerializer(serializers.ModelSerializer[Profile]):
@@ -29,8 +29,8 @@ class WallSectionSerializer(serializers.ModelSerializer[WallSection]):
             "id",
             "profile",
             "section_name",
-            "start_position",
-            "target_length_feet",
+            "initial_height",
+            "current_height",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
@@ -55,11 +55,9 @@ class DailyProgressSerializer(serializers.ModelSerializer[DailyProgress]):
 
     def create(self, validated_data: dict[str, object]) -> DailyProgress:
         """Create DailyProgress with auto-calculated ice_cubic_yards and cost_gold_dragons."""
-        calculator = IceUsageCalculator()
-
         feet_built = cast(Decimal, validated_data["feet_built"])
-        ice_cubic_yards = calculator.calculate_ice_usage(feet_built)
-        cost_gold_dragons = calculator.calculate_daily_cost(ice_cubic_yards)
+        ice_cubic_yards = feet_built * ICE_PER_FOOT
+        cost_gold_dragons = ice_cubic_yards * COST_PER_CUBIC_YARD
 
         validated_data["ice_cubic_yards"] = ice_cubic_yards
         validated_data["cost_gold_dragons"] = cost_gold_dragons

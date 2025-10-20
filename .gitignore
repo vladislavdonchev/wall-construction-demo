@@ -6,3 +6,6 @@
 .coverage
 __pycache__/
 *.pyc
+
+# Database
+db.sqlite3

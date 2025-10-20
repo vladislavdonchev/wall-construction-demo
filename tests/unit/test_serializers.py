@@ -22,8 +22,6 @@ class TestDailyProgressSerializer:
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
-            start_position=Decimal("0.00"),
-            target_length_feet=Decimal("500.00"),
         )
 
         serializer = DailyProgressSerializer(
@@ -51,8 +49,6 @@ class TestDailyProgressSerializer:
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
-            start_position=Decimal("0.00"),
-            target_length_feet=Decimal("500.00"),
         )
 
         serializer = DailyProgressSerializer(
@@ -82,8 +78,6 @@ class TestDailyProgressSerializer:
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
-            start_position=Decimal("0.00"),
-            target_length_feet=Decimal("500.00"),
         )
 
         serializer = DailyProgressSerializer(
@@ -107,8 +101,6 @@ class TestDailyProgressSerializer:
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
-            start_position=Decimal("0.00"),
-            target_length_feet=Decimal("500.00"),
         )
 
         serializer = DailyProgressSerializer(
@@ -131,8 +123,6 @@ class TestDailyProgressSerializer:
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
-            start_position=Decimal("0.00"),
-            target_length_feet=Decimal("500.00"),
         )
 
         # Try to override calculated fields
@@ -159,8 +149,6 @@ class TestDailyProgressSerializer:
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
-            start_position=Decimal("0.00"),
-            target_length_feet=Decimal("500.00"),
         )
 
         # Create first progress entry

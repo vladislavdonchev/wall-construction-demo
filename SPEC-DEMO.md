@@ -2,45 +2,49 @@
 
 ## Problem Overview
 
-The Great Wall of Westeros requires a tracking system for multi-profile wall construction operations. Each construction profile must track daily progress, ice material consumption, and associated costs.
+The Great Wall of Westeros requires a simulation system for multi-profile wall construction operations. The system must parse configuration files specifying wall sections with varying heights, simulate concurrent team construction, and track daily progress with ice consumption and cost metrics.
 
 ### Business Rules
 
 - **Ice Consumption**: 195 cubic yards per linear foot of wall
 - **Ice Cost**: 1,900 Gold Dragons per cubic yard
 - **Daily Cost Formula**: `feet_built × 195 yd³/ft × 1,900 GD/yd³ = daily_cost`
+- **Target Height**: All sections must reach 30 feet
+- **Daily Build Rate**: 1 foot per team per day
+- **Team Assignment**: Round-robin across active sections
 
 ### Requirements
 
-1. Track multiple construction profiles simultaneously
-2. Record daily wall construction progress (feet built per day)
-3. Calculate daily ice usage for each profile
-4. Provide cost overview reports with date range filtering
-5. Support multi-threaded computation for aggregations
+1. Parse multi-profile configuration (heights per section per profile)
+2. Simulate concurrent wall construction with configurable team count
+3. Track daily progress with automatic ice/cost calculations
+4. Generate team activity logs to file system
+5. Provide simulation overview endpoints
 6. Run in HuggingFace Docker Space (file-based, no external services)
 
 ## Technology Stack
 
 ### Core Framework
-- **Django 5.2.7 LTS** (released April 2, 2025)
-  - Python 3.10-3.14 support
+- **Django 5.2.7** (Python 3.12.3)
   - SQLite database (file-based persistence)
   - Built-in ORM with transaction support
+  - Migration system
 
-- **Django REST Framework 3.16** (released March 28, 2025)
-  - ViewSets for CRUD operations
+- **Django REST Framework 3.16**
+  - ViewSets for CRUD and custom actions
   - Serializers for data validation
-  - Pagination and filtering support
+  - Pagination support
 
 ### Multi-Threading
 - **Python concurrent.futures.ThreadPoolExecutor**
-  - No external broker dependencies (Celery-free)
-  - Configurable worker pool size
-  - Suitable for CPU-bound aggregations
+  - Parallel wall section processing during simulation
+  - No external broker dependencies
+  - Configurable worker pool (default: 10 workers)
 
 ### Deployment
 - **HuggingFace Docker Space Compatible**
   - SQLite database file (`db.sqlite3`)
+  - File-based team logs (`logs/team_*.log`)
   - No PostgreSQL, Redis, or RabbitMQ required
   - Single container deployment
 
@@ -50,75 +54,49 @@ The Great Wall of Westeros requires a tracking system for multi-profile wall con
 ┌─────────────────────────────────────────────────────────────┐
 │                     REST API Layer (DRF)                    │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │  Profile     │  │  Progress    │  │  Analytics   │     │
-│  │  ViewSet     │  │  ViewSet     │  │  ViewSet     │     │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
-└─────────┼──────────────────┼──────────────────┼─────────────┘
-          │                  │                  │
-          ▼                  ▼                  ▼
+│  │  Profile     │  │  WallSection │  │  Daily       │     │
+│  │  ViewSet     │  │  ViewSet     │  │  Progress    │     │
+│  │  + simulate  │  │  (CRUD)      │  │  ViewSet     │     │
+│  │  + overview  │  │              │  │  (CRUD)      │     │
+│  └──────┬───────┘  └──────────────┘  └──────────────┘     │
+└─────────┼──────────────────────────────────────────────────┘
+          │
+          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      Service Layer                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │  Profile     │  │  Ice Usage   │  │  Cost        │     │
-│  │  Service     │  │  Calculator  │  │  Aggregator  │     │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
-└─────────┼──────────────────┼──────────────────┼─────────────┘
-          │                  │                  │
-          ▼                  ▼                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Repository Layer                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │  Profile     │  │  Wall        │  │  Daily       │     │
-│  │  Repository  │  │  Section     │  │  Progress    │     │
-│  │              │  │  Repository  │  │  Repository  │     │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
-└─────────┼──────────────────┼──────────────────┼─────────────┘
-          │                  │                  │
-          ▼                  ▼                  ▼
+│                  Simulation Engine                          │
+│  ┌──────────────┐  ┌──────────────┐                        │
+│  │  Config      │  │  Wall        │                        │
+│  │  Parser      │  │  Simulator   │                        │
+│  │              │  │ +ThreadPool  │                        │
+│  └──────────────┘  └──────┬───────┘                        │
+└──────────────────────────┼──────────────────────────────────┘
+                            │
+                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │               Django ORM + SQLite Database                  │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
 │  │  Profile     │  │  WallSection │  │  Daily       │     │
-│  │  Model       │  │  Model       │  │  Progress    │     │
-│  │              │  │              │  │  Model       │     │
+│  │              │──│              │──│  Progress    │     │
+│  │  - name      │  │  - profile   │  │  - section   │     │
+│  │  - lead      │  │  - name      │  │  - date      │     │
+│  │  - active    │  │  - initial_h │  │  - feet      │     │
+│  │              │  │  - current_h │  │  - ice       │     │
+│  │              │  │              │  │  - cost      │     │
 │  └──────────────┘  └──────────────┘  └──────────────┘     │
 └─────────────────────────────────────────────────────────────┘
-```
-
-### ThreadPoolExecutor Integration
-
-```python
-from concurrent.futures import ThreadPoolExecutor
-from django.conf import settings
-
-# services/cost_aggregator.py
-class CostAggregator:
-    def __init__(self):
-        self.executor = ThreadPoolExecutor(
-            max_workers=settings.WORKER_POOL_SIZE
-        )
-
-    def calculate_parallel_costs(self, profiles, date_range):
-        futures = [
-            self.executor.submit(self._calculate_cost, profile, date_range)
-            for profile in profiles
-        ]
-        return [f.result() for f in futures]
 ```
 
 ## Data Models
 
 ### Profile Model
 ```python
-from django.db import models
-
 class Profile(models.Model):
     """Construction profile for wall building operations."""
     name = models.CharField(max_length=255, unique=True)
     team_lead = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'profiles'
@@ -135,8 +113,16 @@ class WallSection(models.Model):
         related_name='wall_sections'
     )
     section_name = models.CharField(max_length=255)
-    start_position = models.DecimalField(max_digits=10, decimal_places=2)
-    target_length_feet = models.DecimalField(max_digits=10, decimal_places=2)
+    initial_height = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Initial height in feet (0-30) for simulation"
+    )
+    current_height = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Current height in feet during simulation"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -178,6 +164,31 @@ class DailyProgress(models.Model):
         ]
 ```
 
+## Configuration Format
+
+### Multi-Profile Config
+```
+21 25 28
+17
+17 22 17 19 17
+```
+
+**Rules:**
+- Each line = 1 profile
+- Space-separated integers = wall section heights (0-30 feet)
+- Max 2000 sections per profile
+- Empty lines ignored
+- Whitespace trimmed
+
+### Example
+```
+5 10 15
+```
+Creates:
+- 1 profile ("Profile 1", "Team Lead 1")
+- 3 wall sections at heights 5ft, 10ft, 15ft
+- Each must reach 30ft
+
 ## API Endpoints
 
 ### Base URL
@@ -185,380 +196,367 @@ class DailyProgress(models.Model):
 http://localhost:8000/api/
 ```
 
-### 1. List Profiles
+### 1. Run Simulation
 ```http
-GET /api/profiles/
-```
-
-**Response**
-```json
-{
-  "count": 2,
-  "next": null,
-  "previous": null,
-  "results": [
-    {
-      "id": 1,
-      "name": "Northern Watch",
-      "team_lead": "Jon Snow",
-      "is_active": true,
-      "created_at": "2025-10-01T08:00:00Z"
-    }
-  ]
-}
-```
-
-### 2. Create Profile
-```http
-POST /api/profiles/
+POST /api/profiles/simulate/
 Content-Type: application/json
 
 {
-  "name": "Eastern Defense",
-  "team_lead": "Tormund Giantsbane",
-  "is_active": true
+  "config": "21 25 28\n17\n17 22 17 19 17",
+  "num_teams": 10,
+  "start_date": "2025-10-20"
 }
 ```
 
-### 3. Record Daily Progress
-```http
-POST /api/profiles/{profile_id}/progress/
-Content-Type: application/json
-
+**Response (201 Created)**
+```json
 {
-  "wall_section_id": 5,
-  "date": "2025-10-15",
-  "feet_built": 12.5,
-  "notes": "Clear weather, good progress"
+  "total_profiles": 3,
+  "total_sections": 9,
+  "total_days": 15,
+  "total_ice_cubic_yards": "82875.00",
+  "total_cost_gold_dragons": "157462500.00"
 }
+```
+
+**Validation:**
+- `config`: Required, non-empty string
+- `num_teams`: Optional integer (default: 10)
+- `start_date`: Optional YYYY-MM-DD (default: today)
+
+### 2. Daily Ice Usage
+```http
+GET /api/profiles/{profile_id}/days/{day}/
 ```
 
 **Response**
 ```json
 {
-  "id": 42,
-  "wall_section_id": 5,
-  "date": "2025-10-15",
-  "feet_built": "12.50",
-  "ice_cubic_yards": "2437.50",
-  "cost_gold_dragons": "4631250.00",
-  "notes": "Clear weather, good progress",
-  "created_at": "2025-10-15T14:30:00Z"
-}
-```
-
-**Calculation**
-- Ice usage: 12.5 feet × 195 yd³/ft = 2,437.5 yd³
-- Cost: 2,437.5 yd³ × 1,900 GD/yd³ = 4,631,250 GD
-
-### 4. Daily Ice Usage by Profile
-```http
-GET /api/profiles/{profile_id}/daily-ice-usage/?date=2025-10-15
-```
-
-**Response**
-```json
-{
-  "profile_id": 1,
-  "profile_name": "Northern Watch",
-  "date": "2025-10-15",
-  "total_feet_built": "28.75",
-  "total_ice_cubic_yards": "5606.25",
+  "day": 3,
+  "total_feet_built": "10.00",
+  "total_ice_cubic_yards": "1950.00",
   "sections": [
     {
-      "section_name": "Tower 1-2",
-      "feet_built": "12.50",
-      "ice_cubic_yards": "2437.50"
-    },
-    {
-      "section_name": "Tower 2-3",
-      "feet_built": "16.25",
-      "ice_cubic_yards": "3168.75"
+      "section_name": "Section 1",
+      "feet_built": "1.00",
+      "ice_cubic_yards": "195.00"
     }
   ]
 }
 ```
 
-### 5. Cost Overview with Date Range
+### 3. Overview by Day (Single Profile)
 ```http
-GET /api/profiles/{profile_id}/cost-overview/?start_date=2025-10-01&end_date=2025-10-15
+GET /api/profiles/{profile_id}/overview/{day}/
 ```
 
 **Response**
 ```json
 {
-  "profile_id": 1,
-  "profile_name": "Northern Watch",
-  "date_range": {
-    "start": "2025-10-01",
-    "end": "2025-10-15"
-  },
-  "summary": {
-    "total_days": 15,
-    "total_feet_built": "425.50",
-    "total_ice_cubic_yards": "82972.50",
-    "total_cost_gold_dragons": "157647750.00",
-    "average_feet_per_day": "28.37",
-    "average_cost_per_day": "10509850.00"
-  },
-  "daily_breakdown": [
-    {
-      "date": "2025-10-15",
-      "feet_built": "28.75",
-      "ice_cubic_yards": "5606.25",
-      "cost_gold_dragons": "10651875.00"
-    },
-    {
-      "date": "2025-10-14",
-      "feet_built": "31.00",
-      "ice_cubic_yards": "6045.00",
-      "cost_gold_dragons": "11485500.00"
-    }
-  ]
+  "day": 5,
+  "cost": "92625000.00"
 }
 ```
 
-## Multi-Threading Implementation
+### 4. Overview by Day (All Profiles)
+```http
+GET /api/profiles/overview/{day}/
+```
 
-### Cost Aggregation Service
+**Response**
+```json
+{
+  "day": 10,
+  "cost": "157462500.00"
+}
+```
+
+### 5. Total Overview
+```http
+GET /api/profiles/overview/
+```
+
+**Response**
+```json
+{
+  "day": null,
+  "cost": "157462500.00"
+}
+```
+
+### CRUD Endpoints
+
+**Profiles**
+- `GET /api/profiles/` - List all
+- `POST /api/profiles/` - Create
+- `GET /api/profiles/{id}/` - Retrieve
+- `PUT /api/profiles/{id}/` - Update
+- `PATCH /api/profiles/{id}/` - Partial update
+- `DELETE /api/profiles/{id}/` - Delete
+
+**WallSections**
+- `GET /api/wallsections/` - List all
+- `POST /api/wallsections/` - Create
+- `GET /api/wallsections/{id}/` - Retrieve
+- `PUT /api/wallsections/{id}/` - Update
+- `DELETE /api/wallsections/{id}/` - Delete
+- Query param: `?profile={id}` - Filter by profile
+
+**DailyProgress**
+- `GET /api/progress/` - List all
+- `POST /api/progress/` - Create (auto-calculates ice/cost)
+- `GET /api/progress/{id}/` - Retrieve
+- `PUT /api/progress/{id}/` - Update
+- `DELETE /api/progress/{id}/` - Delete
+
+## Simulation Engine
+
+### ConfigParser
 
 ```python
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from decimal import Decimal
-from django.conf import settings
-from django.db import transaction
-from django.db.models import Sum
+@dataclass
+class ProfileConfig:
+    """Configuration for a single profile's wall sections."""
+    profile_num: int
+    heights: list[int]
 
-class CostAggregatorService:
-    """
-    Service for parallel cost calculations across multiple profiles.
-    Uses ThreadPoolExecutor for CPU-bound aggregation tasks.
-    """
+class ConfigParser:
+    """Parse multi-profile wall construction configuration."""
 
-    def __init__(self, max_workers: int | None = None):
-        self.max_workers = max_workers or settings.WORKER_POOL_SIZE
-        self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
+    MAX_HEIGHT = 30
+    MAX_SECTIONS_PER_PROFILE = 2000
 
-    def calculate_multi_profile_costs(
-        self,
-        profile_ids: list[int],
-        start_date: str,
-        end_date: str
-    ) -> list[dict]:
-        """
-        Calculate costs for multiple profiles in parallel.
+    @classmethod
+    def parse(cls, config_text: str) -> list[ProfileConfig]:
+        """Parse config string into ProfileConfig objects."""
+        profiles: list[ProfileConfig] = []
+        lines = config_text.strip().split("\n")
 
-        Args:
-            profile_ids: List of profile IDs to process
-            start_date: Start date (YYYY-MM-DD)
-            end_date: End date (YYYY-MM-DD)
+        for line_num, raw_line in enumerate(lines, 1):
+            line_text = raw_line.strip()
+            if not line_text:
+                continue  # Skip empty lines
 
-        Returns:
-            List of cost summaries per profile
-        """
-        futures = {
-            self.executor.submit(
-                self._calculate_profile_cost,
-                profile_id,
-                start_date,
-                end_date
-            ): profile_id
-            for profile_id in profile_ids
-        }
-
-        results = []
-        for future in as_completed(futures):
-            profile_id = futures[future]
             try:
-                result = future.result()
-                results.append(result)
-            except Exception as exc:
-                # Log error and continue with other profiles
-                logger.error(
-                    f"Profile {profile_id} cost calculation failed: {exc}"
+                heights = [int(h) for h in line_text.split()]
+            except ValueError as e:
+                raise ValueError(f"Line {line_num}: Invalid number format") from e
+
+            for height in heights:
+                if not 0 <= height <= cls.MAX_HEIGHT:
+                    raise ValueError(
+                        f"Line {line_num}: Height {height} out of range"
+                    )
+
+            if len(heights) > cls.MAX_SECTIONS_PER_PROFILE:
+                raise ValueError(
+                    f"Line {line_num}: Too many sections (max {cls.MAX_SECTIONS_PER_PROFILE})"
                 )
-                results.append({
-                    "profile_id": profile_id,
-                    "error": str(exc)
-                })
 
-        return results
+            profiles.append(ProfileConfig(profile_num=line_num, heights=heights))
 
-    def _calculate_profile_cost(
+        if not profiles:
+            raise ValueError("Config must contain at least one profile")
+
+        return profiles
+```
+
+### WallSimulator
+
+```python
+class WallSimulator:
+    """Simulate wall construction with parallel processing."""
+
+    TARGET_HEIGHT = 30
+    FEET_PER_DAY = 1
+
+    def __init__(self, num_teams: int = 10):
+        self.num_teams = num_teams
+        self.executor = ThreadPoolExecutor(max_workers=num_teams)
+
+    def simulate(
         self,
-        profile_id: int,
-        start_date: str,
-        end_date: str
-    ) -> dict:
-        """Calculate cost summary for a single profile."""
-        from .repositories import DailyProgressRepository
+        profiles_config: list[ProfileConfig],
+        start_date: date
+    ) -> SimulationSummary:
+        """Run simulation from config."""
 
-        repo = DailyProgressRepository()
+        # 1. Initialize profiles and sections in database
+        section_data = self._initialize_profiles(profiles_config)
 
-        # Use Django ORM aggregation for efficient DB queries
-        aggregates = repo.get_aggregates_by_profile(
-            profile_id,
-            start_date,
-            end_date
-        )
+        # 2. Simulate day-by-day until all sections reach 30ft
+        day = 1
+        current_date = start_date
 
-        return {
-            "profile_id": profile_id,
-            "total_feet_built": str(aggregates["total_feet"]),
-            "total_ice_cubic_yards": str(aggregates["total_ice"]),
-            "total_cost_gold_dragons": str(aggregates["total_cost"]),
-            "calculation_thread": threading.current_thread().name
-        }
+        while any(s.current_height < self.TARGET_HEIGHT for s in section_data):
+            # 3. Assign work (round-robin up to num_teams)
+            sections_to_process = self._assign_work(section_data)
 
-    def shutdown(self):
-        """Gracefully shutdown the thread pool."""
-        self.executor.shutdown(wait=True)
-```
+            if not sections_to_process:
+                break  # No more work to assign
 
-### Configuration
+            # 4. Process sections in parallel using ThreadPoolExecutor
+            results = self._process_day(sections_to_process, day)
 
-```python
-# settings.py
-WORKER_POOL_SIZE = 4  # Configurable based on container resources
-```
+            # 5. Save progress to database
+            self._save_progress(results, current_date)
 
-### Usage in ViewSet
+            # 6. Update section heights
+            self._update_heights(section_data, results)
 
-```python
-from rest_framework import viewsets
-from rest_framework.decorators import action
-from rest_framework.response import Response
+            day += 1
+            current_date += timedelta(days=1)
 
-class ProfileViewSet(viewsets.ModelViewSet):
+        # 7. Calculate totals
+        return self._calculate_summary(section_data, day - 1)
 
-    @action(detail=False, methods=['get'])
-    def bulk_cost_overview(self, request):
-        """Calculate costs for multiple profiles in parallel."""
-        profile_ids = request.query_params.getlist('profile_ids[]')
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
-
-        aggregator = CostAggregatorService()
-        try:
-            results = aggregator.calculate_multi_profile_costs(
-                profile_ids,
-                start_date,
-                end_date
-            )
-            return Response({"results": results})
-        finally:
-            aggregator.shutdown()
-```
-
-## Service Layer Design
-
-### IceUsageCalculator
-
-```python
-from decimal import Decimal
-
-class IceUsageCalculator:
-    """Business logic for ice usage calculations."""
-
-    ICE_PER_FOOT = Decimal("195")  # cubic yards per foot
-    COST_PER_CUBIC_YARD = Decimal("1900")  # Gold Dragons
-
-    @classmethod
-    def calculate_ice_usage(cls, feet_built: Decimal) -> Decimal:
-        """Calculate ice usage in cubic yards."""
-        return feet_built * cls.ICE_PER_FOOT
-
-    @classmethod
-    def calculate_cost(cls, ice_cubic_yards: Decimal) -> Decimal:
-        """Calculate cost in Gold Dragons."""
-        return ice_cubic_yards * cls.COST_PER_CUBIC_YARD
-
-    @classmethod
-    def calculate_full_cost(cls, feet_built: Decimal) -> tuple[Decimal, Decimal]:
-        """Calculate both ice usage and cost."""
-        ice = cls.calculate_ice_usage(feet_built)
-        cost = cls.calculate_cost(ice)
-        return ice, cost
-```
-
-## Repository Layer Design
-
-### DailyProgressRepository
-
-```python
-from django.db.models import Sum, Avg, Count
-from decimal import Decimal
-
-class DailyProgressRepository:
-    """Data access layer for DailyProgress model."""
-
-    def get_by_date(self, profile_id: int, date: str):
-        """Retrieve all progress records for a profile on a specific date."""
-        return DailyProgress.objects.filter(
-            wall_section__profile_id=profile_id,
-            date=date
-        ).select_related('wall_section')
-
-    def get_aggregates_by_profile(
+    def _process_day(
         self,
-        profile_id: int,
-        start_date: str,
-        end_date: str
-    ) -> dict:
-        """Get aggregated statistics for a profile within date range."""
-        result = DailyProgress.objects.filter(
-            wall_section__profile_id=profile_id,
-            date__gte=start_date,
-            date__lte=end_date
-        ).aggregate(
-            total_feet=Sum('feet_built'),
-            total_ice=Sum('ice_cubic_yards'),
-            total_cost=Sum('cost_gold_dragons'),
-            avg_feet=Avg('feet_built'),
-            record_count=Count('id')
-        )
+        sections: list[SectionData],
+        day: int
+    ) -> list[ProcessingResult]:
+        """Process sections in parallel."""
+        futures = [
+            self.executor.submit(self._process_section, section, day)
+            for section in sections
+        ]
+        return [f.result() for f in futures]
 
-        # Handle None values for empty querysets
-        return {
-            "total_feet": result["total_feet"] or Decimal("0"),
-            "total_ice": result["total_ice"] or Decimal("0"),
-            "total_cost": result["total_cost"] or Decimal("0"),
-            "avg_feet": result["avg_feet"] or Decimal("0"),
-            "record_count": result["record_count"]
-        }
+    def _process_section(
+        self,
+        section: SectionData,
+        day: int
+    ) -> ProcessingResult:
+        """Process single section (runs in thread)."""
+        feet_built = self.FEET_PER_DAY
+        remaining = self.TARGET_HEIGHT - section.current_height
+
+        if feet_built > remaining:
+            feet_built = remaining
+
+        ice = Decimal(str(feet_built)) * ICE_PER_FOOT
+        cost = ice * COST_PER_CUBIC_YARD
+
+        # Write team log
+        self._write_log(section.team_num, day, section.section_num, feet_built)
+
+        return ProcessingResult(
+            section_id=section.id,
+            feet_built=Decimal(str(feet_built)),
+            ice_cubic_yards=ice,
+            cost_gold_dragons=cost
+        )
 ```
 
-## HuggingFace Space Deployment
+## Multi-Threading Details
 
-### Requirements
+### ThreadPoolExecutor Usage
 
 ```python
-# requirements.txt
-Django==5.2.7
-djangorestframework==3.16.0
+# Initialization (in WallSimulator.__init__)
+self.executor = ThreadPoolExecutor(max_workers=num_teams)
+
+# Parallel section processing (in _process_day)
+futures = [
+    self.executor.submit(self._process_section, section, day)
+    for section in sections_to_process
+]
+results = [f.result() for f in futures]
 ```
 
-### Dockerfile
+**Benefits:**
+- Each wall section processed in separate thread
+- Up to `num_teams` sections processed concurrently
+- Simulates real concurrent construction
+- No GIL contention (I/O-bound file writes)
 
+### Log File Output
+
+Team logs written to `logs/team_{N}.log`:
+```
+Team 1: working on Profile 1, Section 1, building 1.00ft
+Team 1: working on Profile 1, Section 2, building 1.00ft
+Team 1: Section 3 completed!
+Team 1: relieved
+```
+
+## Database Calculations
+
+### Auto-Calculated Fields (DailyProgressSerializer)
+
+```python
+def create(self, validated_data):
+    """Auto-calculate ice and cost from feet_built."""
+    feet_built = validated_data['feet_built']
+
+    ice_cubic_yards = feet_built * ICE_PER_FOOT  # 195 yd³/ft
+    cost_gold_dragons = ice_cubic_yards * COST_PER_CUBIC_YARD  # 1900 GD/yd³
+
+    return DailyProgress.objects.create(
+        **validated_data,
+        ice_cubic_yards=ice_cubic_yards,
+        cost_gold_dragons=cost_gold_dragons
+    )
+```
+
+### Aggregations (Overview Endpoints)
+
+```python
+# Total cost across all progress records
+daily_progress = DailyProgress.objects.all()
+aggregates = daily_progress.aggregate(total_cost=Sum("cost_gold_dragons"))
+total_cost = aggregates["total_cost"] or Decimal("0.00")
+```
+
+## Testing
+
+### Test Coverage
+- **73 tests** across unit/integration/edge cases
+- **98.41% code coverage**
+- **0 MyPy/Ruff errors**
+
+### Test Categories
+
+**Unit Tests:**
+- Model validation and constraints
+- ConfigParser edge cases
+- WallSimulator logic
+- Serializer auto-calculations
+
+**Integration Tests:**
+- Full simulation workflow
+- API endpoint responses
+- Database persistence
+- CRUD operations
+
+**Edge Cases:**
+- Invalid date format handling
+- Profile with no simulation data
+- Empty database queries
+- Config parsing errors
+
+### Running Tests
+```bash
+./scripts/run_tests.py
+```
+
+## Deployment
+
+### HuggingFace Space
+
+**Dockerfile**
 ```dockerfile
 FROM python:3.12-slim
-
 WORKDIR /app
-
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
 COPY . .
-
-# Run migrations and start server
 CMD python manage.py migrate && \
     python manage.py runserver 0.0.0.0:7860
 ```
 
-### Space Configuration
-
+**Space Configuration (README.md)**
 ```yaml
-# README.md (HuggingFace Space header)
 ---
 title: Wall Construction API
 emoji: 🏰
@@ -569,99 +567,63 @@ app_port: 7860
 ---
 ```
 
-### Database Persistence
+### Persistence
+- **Database**: `db.sqlite3` (auto-created, migrations applied on startup)
+- **Logs**: `logs/team_*.log` (created during simulation)
+- **No external services**: Self-contained deployment
 
-- SQLite database file: `db.sqlite3`
-- Persisted in HuggingFace Space persistent storage
-- Automatic migrations on container startup
-- No external database service required
-
-## Error Handling
-
-### Standard Error Response
-
-```json
-{
-  "error": "validation_error",
-  "message": "Invalid date format",
-  "details": {
-    "date": ["Date must be in YYYY-MM-DD format"]
-  }
-}
-```
-
-### HTTP Status Codes
-
-- `200 OK` - Successful GET request
-- `201 Created` - Successful POST request
-- `400 Bad Request` - Validation error
-- `404 Not Found` - Resource not found
-- `500 Internal Server Error` - Server error
-
-## Testing Strategy
-
-### Unit Tests
-- Service layer: IceUsageCalculator calculations
-- Repository layer: Query correctness
-- Model layer: Validation rules
-
-### Integration Tests
-- API endpoints with test database
-- ThreadPoolExecutor parallel execution
-- Full request/response cycle
-
-### Test Data
-- Sample profiles with known outputs
-- Edge cases: zero feet built, large numbers
-- Date range boundaries
-
-## Performance Considerations
+## Performance
 
 ### Database Optimization
-- Indexes on `date` and `wall_section_id` fields
-- `select_related()` for FK queries
-- `aggregate()` for sum/avg calculations
-- Database connection pooling (built into Django)
+- Indexes on `date` and `wall_section_id`
+- `select_related()` for foreign key queries
+- `aggregate()` for sum calculations
+- Single atomic transactions per simulation
 
 ### Thread Pool Sizing
-- Default: 4 workers
-- Configurable via `WORKER_POOL_SIZE` setting
-- Balance between parallelism and resource usage
-- HuggingFace Space constraints: 2-4 workers recommended
+- Default: 10 workers (configurable via `num_teams` param)
+- Each worker processes 1 section per day
+- I/O-bound (file writes), minimal CPU contention
+- Suitable for HuggingFace Space resource limits
 
-### Query Optimization
-```python
-# Good: Single query with aggregation
-DailyProgress.objects.filter(...).aggregate(Sum('cost_gold_dragons'))
-
-# Bad: Multiple queries in loop
-for progress in DailyProgress.objects.filter(...):
-    total += progress.cost_gold_dragons
-```
-
-## Future Enhancements
-
-1. **Caching Layer**: Redis cache for frequently accessed aggregations
-2. **Async Views**: Upgrade to Django 5.x async views when DRF adds native support
-3. **Background Tasks**: True Celery integration for long-running reports
-4. **PostgreSQL**: Upgrade to PostgreSQL for production deployments
-5. **Metrics Dashboard**: Real-time construction progress visualization
-6. **Export Features**: CSV/PDF report generation
-7. **Authentication**: Token-based API authentication
-8. **Rate Limiting**: Throttling for cost-intensive aggregations
-
-## Appendix: Constants
+## Constants
 
 ```python
 # constants.py
 from decimal import Decimal
 
-# Wall Construction Constants
-ICE_CUBIC_YARDS_PER_FOOT = Decimal("195")
-GOLD_DRAGONS_PER_CUBIC_YARD = Decimal("1900")
+TARGET_HEIGHT = 30  # feet
+ICE_PER_FOOT = Decimal("195")  # cubic yards
+COST_PER_CUBIC_YARD = Decimal("1900")  # Gold Dragons
+```
 
-# Calculated Constants
-GOLD_DRAGONS_PER_FOOT = (
-    ICE_CUBIC_YARDS_PER_FOOT * GOLD_DRAGONS_PER_CUBIC_YARD
-)  # 370,500 GD per foot
+## Example Workflow
+
+```python
+# 1. POST simulation config
+POST /api/profiles/simulate/
+{
+  "config": "5 10 15",
+  "num_teams": 10
+}
+
+# 2. Check total cost
+GET /api/profiles/overview/
+→ {"day": null, "cost": "16965000.00"}
+
+# 3. Check day 5 progress
+GET /api/profiles/overview/5/
+→ {"day": 5, "cost": "9262500.00"}
+
+# 4. List all profiles
+GET /api/profiles/
+→ [{"id": 1, "name": "Profile 1", "team_lead": "Team Lead 1"}]
+
+# 5. View section details
+GET /api/wallsections/?profile=1
+→ [
+    {"section_name": "Section 1", "initial_height": 5, "current_height": 30},
+    {"section_name": "Section 2", "initial_height": 10, "current_height": 30},
+    {"section_name": "Section 3", "initial_height": 15, "current_height": 30}
+  ]
 ```

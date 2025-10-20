@@ -94,7 +94,8 @@ wall-construction-gui/
 │   ├── pages/               # Page-level components
 │   │   ├── Dashboard.jsx
 │   │   ├── ProfileDetail.jsx
-│   │   ├── ProgressForm.jsx
+│   │   ├── SimulationForm.jsx
+│   │   ├── SimulationResults.jsx
 │   │   ├── DailyIceUsage.jsx
 │   │   └── CostAnalytics.jsx
 │   ├── hooks/               # Custom React hooks
@@ -354,9 +355,9 @@ export default function BarChart({ data, dataKey, xKey, color = '#10b981' }) {
 ### 1. Dashboard
 **File**: `src/pages/Dashboard.jsx`
 
-**Purpose**: Display all construction profiles as cards with summary statistics
+**Purpose**: Display simulation results overview with total statistics
 
-**Data Source**: `GET /api/profiles/` + parallel `GET /api/profiles/{id}/cost-overview/`
+**Data Source**: `GET /api/simulation/overview/total/`
 
 **Components**:
 - Grid of profile cards
@@ -373,9 +374,9 @@ export default function BarChart({ data, dataKey, xKey, color = '#10b981' }) {
 ### 2. ProfileDetail
 **File**: `src/pages/ProfileDetail.jsx`
 
-**Purpose**: Detailed view of a single profile with cost analytics and daily breakdown
+**Purpose**: Detailed view of simulation results by day
 
-**Data Source**: `GET /api/profiles/{id}/cost-overview/?start_date=X&end_date=Y`
+**Data Source**: `GET /api/simulation/overview/{day}/` or `GET /api/simulation/overview/all-by-day/`
 
 **Components**:
 - Profile header (name, team lead)
@@ -391,30 +392,49 @@ export default function BarChart({ data, dataKey, xKey, color = '#10b981' }) {
 - Download CSV button (client-side generation)
 - Print-friendly layout
 
-### 3. ProgressForm
-**File**: `src/pages/ProgressForm.jsx`
+### 3. SimulationForm
+**File**: `src/pages/SimulationForm.jsx`
 
-**Purpose**: Record daily construction progress for a wall section
+**Purpose**: Run wall construction simulation with multi-profile configuration
 
-**Data Source**: `POST /api/profiles/{id}/progress/`
+**Data Source**: `POST /api/simulation/simulate/`
 
 **Components**:
-- Profile selector dropdown
-- Wall section selector
-- Date picker (default: today)
-- Feet built input (number)
-- Notes textarea (optional)
-- Real-time calculation display (ice usage, cost)
-- Submit button
+- Configuration textarea (multi-line input for wall heights)
+- Number of teams input (default: 10)
+- Run Simulation button
+- Example config link/tooltip
+- Results display area (summary statistics)
+- View Logs button (navigates to SimulationResults)
 
 **Key Features**:
-- Form validation (required fields, number validation)
-- Real-time calculations using constants (195 yd³/ft, 1,900 GD/yd³)
-- Success toast notification
-- Error handling with user-friendly messages
-- Clear form after submission
+- Config format validation (numbers only, range 0-30)
+- Example: "5, 10, 15" creates 3 profiles with heights 5, 10, 15
+- Real-time simulation execution
+- Summary display: total ice used, total cost, days to completion
+- Success/error notifications
+- Link to detailed logs and daily breakdown
 
-### 4. DailyIceUsage
+### 4. SimulationResults
+**File**: `src/pages/SimulationResults.jsx`
+
+**Purpose**: Display detailed simulation logs and daily progress
+
+**Data Source**: Read from `/logs/team_*.log` files or use `GET /api/simulation/overview/all-by-day/`
+
+**Components**:
+- Log viewer (scrollable text area with team logs)
+- Day-by-day summary table
+- Team status indicators (working/relieved)
+- Simulation summary statistics
+
+**Key Features**:
+- Syntax-highlighted log display
+- Filter logs by team number
+- Download logs button
+- Refresh simulation button
+
+### 5. DailyIceUsage
 **File**: `src/pages/DailyIceUsage.jsx`
 
 **Purpose**: Breakdown of ice usage by wall section for a specific date
@@ -434,12 +454,12 @@ export default function BarChart({ data, dataKey, xKey, color = '#10b981' }) {
 - Sortable table columns
 - Export to CSV
 
-### 5. CostAnalytics
+### 6. CostAnalytics
 **File**: `src/pages/CostAnalytics.jsx`
 
 **Purpose**: Multi-chart cost analytics dashboard
 
-**Data Source**: `GET /api/profiles/{id}/cost-overview/?start_date=X&end_date=Y`
+**Data Source**: `GET /api/simulation/overview/all-by-day/`
 
 **Components**:
 - Date range selector
@@ -507,7 +527,7 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
-  // Profiles
+  // Profiles (CRUD endpoints for manual management)
   getProfiles: () => request('/profiles/'),
   getProfile: (id) => request(`/profiles/${id}/`),
   createProfile: (data) => request('/profiles/', {
@@ -515,18 +535,16 @@ export const api = {
     body: JSON.stringify(data)
   }),
 
-  // Progress
-  recordProgress: (profileId, data) => request(`/profiles/${profileId}/progress/`, {
+  // Simulation
+  runSimulation: (config, numTeams = 10) => request('/simulation/simulate/', {
     method: 'POST',
-    body: JSON.stringify(data)
+    body: JSON.stringify({ config, num_teams: numTeams })
   }),
 
   // Analytics
-  getDailyIceUsage: (profileId, date) =>
-    request(`/profiles/${profileId}/daily-ice-usage/?date=${date}`),
-
-  getCostOverview: (profileId, startDate, endDate) =>
-    request(`/profiles/${profileId}/cost-overview/?start_date=${startDate}&end_date=${endDate}`)
+  getOverviewTotal: () => request('/simulation/overview/total/'),
+  getOverviewByDay: (day) => request(`/simulation/overview/${day}/`),
+  getOverviewAllByDay: () => request('/simulation/overview/all-by-day/')
 }
 ```
 
@@ -649,7 +667,8 @@ Only add React Context if:
 import { useState, useEffect } from 'react'
 import Dashboard from './pages/Dashboard'
 import ProfileDetail from './pages/ProfileDetail'
-import ProgressForm from './pages/ProgressForm'
+import SimulationForm from './pages/SimulationForm'
+import SimulationResults from './pages/SimulationResults'
 
 function App() {
   const [route, setRoute] = useState(window.location.hash.slice(1) || 'dashboard')
@@ -688,9 +707,13 @@ function App() {
               className={route === 'dashboard' ? 'font-bold' : ''}>
               Dashboard
             </button>
-            <button onClick={() => navigate('progress')}
-              className={route === 'progress' ? 'font-bold' : ''}>
-              Record Progress
+            <button onClick={() => navigate('simulation')}
+              className={route === 'simulation' ? 'font-bold' : ''}>
+              Run Simulation
+            </button>
+            <button onClick={() => navigate('results')}
+              className={route === 'results' ? 'font-bold' : ''}>
+              View Results
             </button>
           </div>
         </div>
@@ -699,7 +722,8 @@ function App() {
       <main className="max-w-7xl mx-auto px-4">
         {route === 'dashboard' && <Dashboard navigate={navigate} />}
         {route === 'profile' && <ProfileDetail profileId={params.id} navigate={navigate} />}
-        {route === 'progress' && <ProgressForm navigate={navigate} />}
+        {route === 'simulation' && <SimulationForm navigate={navigate} />}
+        {route === 'results' && <SimulationResults navigate={navigate} />}
       </main>
     </div>
   )
@@ -712,8 +736,8 @@ export default App
 ```
 /#dashboard
 /#profile?id=1
-/#profile?id=1&start=2025-10-01&end=2025-10-20
-/#progress
+/#simulation
+/#results
 /#ice-usage?id=1&date=2025-10-15
 ```
 

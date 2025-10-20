@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
-
 from django.db import models
 
 
@@ -34,8 +32,6 @@ class WallSection(models.Model):
         related_name="wall_sections",
     )
     section_name = models.CharField(max_length=255)
-    start_position = models.DecimalField(max_digits=10, decimal_places=2)
-    target_length_feet = models.DecimalField(max_digits=10, decimal_places=2)
     initial_height = models.IntegerField(
         null=True,
         blank=True,
@@ -60,9 +56,6 @@ class WallSection(models.Model):
 
 class DailyProgress(models.Model):
     """Daily construction progress for a wall section."""
-
-    ICE_PER_FOOT = Decimal("195")  # cubic yards per linear foot
-    COST_PER_CUBIC_YARD = Decimal("1900")  # Gold Dragons per cubic yard
 
     wall_section = models.ForeignKey(
         WallSection,

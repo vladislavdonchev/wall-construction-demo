@@ -9,6 +9,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
+from apps.profiles.constants import COST_PER_CUBIC_YARD, ICE_PER_FOOT, TARGET_HEIGHT
 from apps.profiles.models import DailyProgress, Profile, WallSection
 
 
@@ -59,10 +60,6 @@ class WallSimulator:
     SQLite compatibility through main-thread-only database operations.
     """
 
-    TARGET_HEIGHT = 30
-    ICE_PER_FOOT = Decimal("195")
-    COST_PER_CUBIC_YARD = Decimal("1900")
-
     def __init__(self, num_teams: int, log_dir: str = "logs"):
         """Initialize simulator with team pool.
 
@@ -97,7 +94,7 @@ class WallSimulator:
         current_date = start_date
         day = 1
 
-        while any(s.current_height < self.TARGET_HEIGHT for s in section_data):
+        while any(s.current_height < TARGET_HEIGHT for s in section_data):
             sections_to_process = self._assign_work(section_data)
 
             if not sections_to_process:
@@ -160,8 +157,6 @@ class WallSimulator:
                 section = WallSection.objects.create(
                     profile=profile,
                     section_name=f"Section {section_num}",
-                    start_position=Decimal(str(section_num - 1)),
-                    target_length_feet=Decimal("1.0"),
                     initial_height=height,
                     current_height=height,
                 )
@@ -190,7 +185,7 @@ class WallSimulator:
         Returns:
             Sections assigned to teams for this day
         """
-        incomplete_sections = [s for s in section_data if s.current_height < self.TARGET_HEIGHT]
+        incomplete_sections = [s for s in section_data if s.current_height < TARGET_HEIGHT]
 
         return incomplete_sections[: self.num_teams]
 
@@ -243,14 +238,14 @@ class WallSimulator:
             Processing result
         """
         feet_built = 1
-        ice = Decimal(str(feet_built)) * self.ICE_PER_FOOT
-        cost = ice * self.COST_PER_CUBIC_YARD
+        ice = Decimal(str(feet_built)) * ICE_PER_FOOT
+        cost = ice * COST_PER_CUBIC_YARD
 
         new_height = section.current_height + feet_built
 
         log_file = self.log_dir / f"team_{team_id}.log"
         with log_file.open("a") as f:
-            if new_height >= self.TARGET_HEIGHT:
+            if new_height >= TARGET_HEIGHT:
                 f.write(f"Day {day}: Team {team_id} completed {section.section_name} ({section.profile_name})\n")
             else:
                 f.write(f"Day {day}: Team {team_id} worked on {section.section_name} ({section.profile_name}) - {new_height}/30 ft\n")
