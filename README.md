@@ -7,9 +7,9 @@ sdk: docker
 app_port: 7860
 ---
 
-# Wall Construction API
+# Wall Construction Tracker
 
-A Django REST API for tracking multi-profile wall construction operations, ice material consumption, and associated costs.
+A full-stack application for tracking multi-profile wall construction operations, ice material consumption, and associated costs. Features a React GUI frontend and Django REST API backend.
 
 ## Features
 
@@ -167,13 +167,27 @@ curl http://localhost:7860/api/profiles/
 
 ## Technology Stack
 
+### Backend
 - **Django 5.2.7 LTS** - Web framework
 - **Django REST Framework 3.16** - API framework
 - **Python 3.12** - Programming language
+- **Gunicorn** - WSGI HTTP server
 - **uv** - Fast Python package manager
 - **SQLite** - File-based database
 - **ThreadPoolExecutor** - Parallel cost calculations
 - **pytest** - Testing framework
+
+### Frontend
+- **React 18** - UI framework
+- **Vite 6** - Build tool
+- **Tailwind CSS 3** - Utility-first CSS
+- **Recharts 2** - Chart library
+- **Hash-based routing** - Client-side navigation
+
+### Infrastructure
+- **Nginx** - Reverse proxy and static file server
+- **Supervisor** - Process control system
+- **Docker multi-stage builds** - Optimized deployment
 
 ## Development Standards
 

@@ -121,6 +121,7 @@ dependencies = [
     { name = "django" },
     { name = "django-filter" },
     { name = "djangorestframework" },
+    { name = "gunicorn" },
     { name = "loguru" },
     { name = "pydantic" },
 ]
@@ -153,6 +154,7 @@ requires-dist = [
     { name = "djangorestframework-stubs", marker = "extra == 'dev'", specifier = "==3.16.4" },
     { name = "factory-boy", marker = "extra == 'test'", specifier = "==3.3.3" },
     { name = "faker", marker = "extra == 'test'", specifier = "==33.3.0" },
+    { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "loguru", specifier = "==0.7.3" },
     { name = "mypy", marker = "extra == 'dev'", specifier = "==1.18.2" },
     { name = "pydantic", specifier = ">=2.10.6" },
@@ -279,6 +281,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/cf/d8/8beb1b27c9a068943bc7702418b08f3d52f9f9ac13be16ec1ebc82fa7af2/faker-33.3.0.tar.gz", hash = "sha256:2abb551a05b75d268780b6095100a48afc43c53e97422002efbfc1272ebf5f26", size = 1854655, upload-time = "2025-01-03T21:53:32.14Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d2/7e/553601891ef96f030a1a6cc14d7957fb1c81e394ca89cafccb97e0eb5882/Faker-33.3.0-py3-none-any.whl", hash = "sha256:ae074d9c7ef65817a93b448141a5531a16b2ea2e563dc5774578197c7c84060c", size = 1894526, upload-time = "2025-01-03T21:53:27.711Z" },
+]
+
+[[package]]
+name = "gunicorn"
+version = "23.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/34/72/9614c465dc206155d93eff0ca20d42e1e35afc533971379482de953521a4/gunicorn-23.0.0.tar.gz", hash = "sha256:f014447a0101dc57e294f6c18ca6b40227a4c90e9bdb586042628030cba004ec", size = 375031, upload-time = "2024-08-10T20:25:27.378Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cb/7d/6dac2a6e1eba33ee43f318edbed4ff29151a49b5d37f080aad1e6469bca4/gunicorn-23.0.0-py3-none-any.whl", hash = "sha256:ec400d38950de4dfd418cff8328b2c8faed0edb0d517d3394e457c317908ca4d", size = 85029, upload-time = "2024-08-10T20:25:24.996Z" },
 ]
 
 [[package]]
