@@ -113,8 +113,12 @@ class TestSimulationAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert "day" in response.data
-        assert "ice_amount" in response.data
-        assert response.data["day"] == "1"
+        assert "total_feet_built" in response.data
+        assert "total_ice_cubic_yards" in response.data
+        assert "sections" in response.data
+        assert response.data["day"] == 1
+        assert isinstance(response.data["sections"], list)
+        assert len(response.data["sections"]) == 2
 
     def test_days_endpoint_returns_404_for_no_data(
         self,
@@ -210,7 +214,7 @@ class TestSimulationAPI:
 
         day_1_response = api_client.get(f"/api/profiles/{profile_1.id}/days/1/")
         assert day_1_response.status_code == status.HTTP_200_OK
-        assert day_1_response.data["ice_amount"] == "585"
+        assert day_1_response.data["total_ice_cubic_yards"] == "585"
 
         overview_response = api_client.get("/api/profiles/overview/")
         assert overview_response.status_code == status.HTTP_200_OK

@@ -105,15 +105,27 @@ class ProfileViewSet(viewsets.ModelViewSet[Profile]):
         target_date = first_progress.date + timedelta(days=day_num - 1)
 
         wall_sections = WallSection.objects.filter(profile=profile)
-        daily_progress = DailyProgress.objects.filter(wall_section__in=wall_sections, date=target_date)
+        daily_progress = DailyProgress.objects.filter(wall_section__in=wall_sections, date=target_date).select_related("wall_section")
 
-        aggregates = daily_progress.aggregate(total_ice=Sum("ice_cubic_yards"))
+        aggregates = daily_progress.aggregate(total_feet=Sum("feet_built"), total_ice=Sum("ice_cubic_yards"))
+        total_feet = Decimal("0.00") if aggregates["total_feet"] is None else aggregates["total_feet"]
         total_ice = Decimal("0.00") if aggregates["total_ice"] is None else aggregates["total_ice"]
+
+        sections = [
+            {
+                "section_name": progress.wall_section.section_name,
+                "feet_built": str(progress.feet_built),
+                "ice_cubic_yards": str(progress.ice_cubic_yards),
+            }
+            for progress in daily_progress
+        ]
 
         return Response(
             {
-                "day": str(day_num),
-                "ice_amount": str(total_ice),
+                "day": day_num,
+                "total_feet_built": str(total_feet),
+                "total_ice_cubic_yards": str(total_ice),
+                "sections": sections,
             }
         )
 
