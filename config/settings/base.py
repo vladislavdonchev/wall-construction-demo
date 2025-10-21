@@ -38,6 +38,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 
+# Force script name for proper URL generation behind proxy
+FORCE_SCRIPT_NAME = "/api"
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
