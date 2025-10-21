@@ -8,6 +8,7 @@ from apps.profiles.constants import (
     MAX_SECTIONS_PER_PROFILE,
     MAX_TOTAL_SECTIONS,
     MIN_HEIGHT,
+    TARGET_HEIGHT,
 )
 from apps.profiles.services.simulator import ProfileConfig
 
@@ -75,6 +76,25 @@ class ConfigParser:
             raise ValueError(msg)
 
     @staticmethod
+    def _validate_needs_construction(profiles: list[ProfileConfig]) -> None:
+        """Validate that at least one section needs construction.
+
+        Args:
+            profiles: List of parsed profiles
+
+        Raises:
+            ValueError: If all sections are already at target height
+        """
+        all_at_target = all(height == TARGET_HEIGHT for profile in profiles for height in profile.heights)
+
+        if all_at_target:
+            msg = (
+                f"All wall sections are already at target height ({TARGET_HEIGHT} feet). "
+                f"No construction work needed. Please provide sections that require construction (height < {TARGET_HEIGHT})."
+            )
+            raise ValueError(msg)
+
+    @staticmethod
     def parse_config(config_text: str) -> list[ProfileConfig]:
         """Parse wall profile configuration.
 
@@ -114,5 +134,6 @@ class ConfigParser:
             profiles.append(ProfileConfig(heights=heights))
 
         ConfigParser._validate_profile_counts(profiles, total_sections)
+        ConfigParser._validate_needs_construction(profiles)
 
         return profiles

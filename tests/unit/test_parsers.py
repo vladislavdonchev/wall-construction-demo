@@ -114,3 +114,22 @@ class TestConfigParser:
         result = parser.parse_config(config_text)
         assert len(result) == 1
         assert len(result[0].heights) == 2000
+
+    def test_parse_all_sections_at_target_height_fails(self) -> None:
+        """Test that config with all sections at target height is rejected."""
+        parser = ConfigParser()
+
+        with pytest.raises(ValueError, match="already at target height"):
+            parser.parse_config("30 30 30")
+
+    def test_parse_some_sections_at_target_height_succeeds(self) -> None:
+        """Test that config with some sections at target height is accepted."""
+        parser = ConfigParser()
+
+        result = parser.parse_config("29 30")
+        assert len(result) == 1
+        assert result[0].heights == [29, 30]
+
+        result = parser.parse_config("0 30 30")
+        assert len(result) == 1
+        assert result[0].heights == [0, 30, 30]
