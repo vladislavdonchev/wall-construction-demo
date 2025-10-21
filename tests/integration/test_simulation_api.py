@@ -63,7 +63,7 @@ class TestSimulationAPI:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "config" in response.data
-        assert "Invalid config format" in str(response.data["config"])
+        assert "Invalid number format" in str(response.data["config"])
 
     def test_simulate_endpoint_requires_config(
         self,
@@ -94,7 +94,7 @@ class TestSimulationAPI:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "num_teams" in response.data
-        assert "positive integer" in str(response.data["num_teams"])
+        assert "must be at least" in str(response.data["num_teams"])
 
     def test_days_endpoint_returns_ice_usage(
         self,
@@ -181,7 +181,11 @@ class TestSimulationAPI:
         self,
         api_client: APIClient,
     ) -> None:
-        """Test GET /profiles/overview/ endpoint."""
+        """Test GET /profiles/overview/ endpoint returns total days.
+
+        The endpoint now calculates and returns the actual number of
+        construction days from DailyProgress records instead of None.
+        """
         config_data = {
             "config": "28 29",
             "num_teams": 2,
@@ -195,7 +199,9 @@ class TestSimulationAPI:
         assert response.status_code == status.HTTP_200_OK
         assert "day" in response.data
         assert "cost" in response.data
-        assert response.data["day"] is None
+        # Verify day is now calculated from simulation data
+        assert response.data["day"] > 0
+        assert isinstance(response.data["day"], int)
 
     def test_spec_example_simulation(
         self,

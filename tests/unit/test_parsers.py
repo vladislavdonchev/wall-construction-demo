@@ -85,7 +85,7 @@ class TestConfigParser:
         config_text = "21 -5 28"
         parser = ConfigParser()
 
-        with pytest.raises(ValueError, match="out of range"):
+        with pytest.raises(ValueError, match="out of valid range"):
             parser.parse_config(config_text)
 
     def test_parse_height_above_30_fails(self) -> None:
@@ -93,7 +93,7 @@ class TestConfigParser:
         config_text = "21 35 28"
         parser = ConfigParser()
 
-        with pytest.raises(ValueError, match="out of range"):
+        with pytest.raises(ValueError, match="out of valid range"):
             parser.parse_config(config_text)
 
     def test_parse_too_many_sections_fails(self) -> None:
