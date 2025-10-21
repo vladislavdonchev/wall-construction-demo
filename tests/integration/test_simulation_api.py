@@ -6,7 +6,7 @@ import pytest
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from apps.profiles.models import DailyProgress, Profile, WallSection
+from apps.profiles.models import DailyProgress, Profile, Simulation, WallSection
 
 
 @pytest.mark.django_db
@@ -126,9 +126,10 @@ class TestSimulationAPI:
     def test_days_endpoint_returns_404_for_no_data(
         self,
         api_client: APIClient,
+        simulation: Simulation,
     ) -> None:
         """Test days endpoint returns 404 when no simulation data."""
-        profile = Profile.objects.create(name="Test", team_lead="Lead")
+        profile = Profile.objects.create(simulation=simulation, name="Test", team_lead="Lead")
 
         response = api_client.get(f"/api/profiles/{profile.id}/days/1/")
 

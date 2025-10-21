@@ -8,7 +8,7 @@ from decimal import Decimal
 import pytest
 from rest_framework.exceptions import ValidationError
 
-from apps.profiles.models import DailyProgress, Profile, WallSection
+from apps.profiles.models import DailyProgress, Profile, Simulation, WallSection
 from apps.profiles.serializers import DailyProgressSerializer
 
 
@@ -16,9 +16,9 @@ from apps.profiles.serializers import DailyProgressSerializer
 class TestDailyProgressSerializer:
     """Test DailyProgressSerializer functionality."""
 
-    def test_create_daily_progress_with_auto_calculation(self) -> None:
+    def test_create_daily_progress_with_auto_calculation(self, simulation: Simulation) -> None:
         """Test serializer auto-calculates ice_cubic_yards and cost_gold_dragons."""
-        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile = Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
@@ -43,9 +43,9 @@ class TestDailyProgressSerializer:
         assert progress.feet_built == Decimal("12.50")
         assert progress.notes == "Clear weather, good progress"
 
-    def test_serializer_output_includes_calculated_fields(self) -> None:
+    def test_serializer_output_includes_calculated_fields(self, simulation: Simulation) -> None:
         """Test serializer returns calculated fields in response."""
-        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile = Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
@@ -72,9 +72,9 @@ class TestDailyProgressSerializer:
         assert "id" in data
         assert "created_at" in data
 
-    def test_create_daily_progress_without_notes(self) -> None:
+    def test_create_daily_progress_without_notes(self, simulation: Simulation) -> None:
         """Test creating daily progress without optional notes field."""
-        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile = Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
@@ -95,9 +95,9 @@ class TestDailyProgressSerializer:
         assert progress.ice_cubic_yards == Decimal("1950.00")
         assert progress.cost_gold_dragons == Decimal("3705000.00")
 
-    def test_create_daily_progress_for_zero_feet(self) -> None:
+    def test_create_daily_progress_for_zero_feet(self, simulation: Simulation) -> None:
         """Test creating daily progress with zero feet built."""
-        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile = Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
@@ -117,9 +117,9 @@ class TestDailyProgressSerializer:
         assert progress.ice_cubic_yards == Decimal("0.00")
         assert progress.cost_gold_dragons == Decimal("0.00")
 
-    def test_calculated_fields_are_read_only(self) -> None:
+    def test_calculated_fields_are_read_only(self, simulation: Simulation) -> None:
         """Test that ice_cubic_yards and cost_gold_dragons cannot be set via API."""
-        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile = Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
@@ -143,9 +143,9 @@ class TestDailyProgressSerializer:
         assert progress.ice_cubic_yards == Decimal("1950.00")
         assert progress.cost_gold_dragons == Decimal("3705000.00")
 
-    def test_unique_constraint_validation(self) -> None:
+    def test_unique_constraint_validation(self, simulation: Simulation) -> None:
         """Test serializer validates unique constraint on wall_section + date."""
-        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile = Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",

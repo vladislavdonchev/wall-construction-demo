@@ -34,7 +34,7 @@ class ProfileSerializer(serializers.ModelSerializer[Profile]):
 
     class Meta:
         model = Profile
-        fields = ["id", "name", "team_lead", "is_active", "created_at", "updated_at"]
+        fields = ["id", "simulation", "name", "team_lead", "is_active", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
 
 

@@ -14,6 +14,8 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from apps.profiles.models import Simulation
+
 
 @pytest.mark.django_db
 @pytest.mark.deployment
@@ -60,12 +62,13 @@ class TestDeploymentHealth:
 class TestDeploymentEndToEnd:
     """Test end-to-end workflows to verify deployment integrity."""
 
-    def test_create_profile_and_retrieve(self, api_client: APIClient) -> None:
+    def test_create_profile_and_retrieve(self, api_client: APIClient, simulation: Simulation) -> None:
         """Test creating a profile and retrieving it verifies database works."""
         list_url = reverse("profile-list")
 
         # Create profile
         create_payload = {
+            "simulation": simulation.id,
             "name": "Deployment Test Profile",
             "team_lead": "Test Lead",
             "is_active": True,
@@ -87,11 +90,11 @@ class TestDeploymentEndToEnd:
         assert retrieve_response.data["name"] == "Deployment Test Profile"
         assert retrieve_response.data["team_lead"] == "Test Lead"
 
-    def test_create_wallsection_with_profile(self, api_client: APIClient) -> None:
+    def test_create_wallsection_with_profile(self, api_client: APIClient, simulation: Simulation) -> None:
         """Test creating wallsection with profile verifies foreign keys work."""
         # Create profile first
         profile_url = reverse("profile-list")
-        profile_payload = {"name": "Wall Builder", "team_lead": "Builder Lead"}
+        profile_payload = {"simulation": simulation.id, "name": "Wall Builder", "team_lead": "Builder Lead"}
         profile_response = api_client.post(
             profile_url,
             profile_payload,
@@ -117,13 +120,14 @@ class TestDeploymentEndToEnd:
         assert wallsection_response.data["section_name"] == "Section 1"
         assert "id" in wallsection_response.data
 
-    def test_list_profiles_after_creation(self, api_client: APIClient) -> None:
+    def test_list_profiles_after_creation(self, api_client: APIClient, simulation: Simulation) -> None:
         """Test listing profiles returns created profiles."""
         url = reverse("profile-list")
 
         # Create multiple profiles
         for i in range(3):
             payload = {
+                "simulation": simulation.id,
                 "name": f"Profile {i}",
                 "team_lead": f"Lead {i}",
             }
@@ -137,11 +141,11 @@ class TestDeploymentEndToEnd:
         assert list_response.data["count"] == 3
         assert len(list_response.data["results"]) == 3
 
-    def test_update_profile(self, api_client: APIClient) -> None:
+    def test_update_profile(self, api_client: APIClient, simulation: Simulation) -> None:
         """Test updating a profile verifies write operations work."""
         # Create profile
         list_url = reverse("profile-list")
-        create_payload = {"name": "Original Name", "team_lead": "Original Lead"}
+        create_payload = {"simulation": simulation.id, "name": "Original Name", "team_lead": "Original Lead"}
         create_response = api_client.post(list_url, create_payload, format="json")
         assert create_response.status_code == status.HTTP_201_CREATED
         profile_id = create_response.data["id"]
@@ -149,6 +153,7 @@ class TestDeploymentEndToEnd:
         # Update profile
         detail_url = reverse("profile-detail", kwargs={"pk": profile_id})
         update_payload = {
+            "simulation": simulation.id,
             "name": "Updated Name",
             "team_lead": "Updated Lead",
             "is_active": False,
@@ -160,11 +165,11 @@ class TestDeploymentEndToEnd:
         assert update_response.data["team_lead"] == "Updated Lead"
         assert update_response.data["is_active"] is False
 
-    def test_delete_profile(self, api_client: APIClient) -> None:
+    def test_delete_profile(self, api_client: APIClient, simulation: Simulation) -> None:
         """Test deleting a profile verifies delete operations work."""
         # Create profile
         list_url = reverse("profile-list")
-        create_payload = {"name": "To Delete", "team_lead": "Delete Lead"}
+        create_payload = {"simulation": simulation.id, "name": "To Delete", "team_lead": "Delete Lead"}
         create_response = api_client.post(list_url, create_payload, format="json")
         assert create_response.status_code == status.HTTP_201_CREATED
         profile_id = create_response.data["id"]
@@ -201,10 +206,11 @@ class TestDatabaseMigrations:
 
         assert response.status_code == status.HTTP_200_OK
 
-    def test_profile_fields_exist(self, api_client: APIClient) -> None:
+    def test_profile_fields_exist(self, api_client: APIClient, simulation: Simulation) -> None:
         """Test Profile model has all required fields."""
         url = reverse("profile-list")
         payload = {
+            "simulation": simulation.id,
             "name": "Field Test",
             "team_lead": "Test Lead",
             "is_active": True,
@@ -220,13 +226,13 @@ class TestDatabaseMigrations:
         assert "created_at" in response.data
         assert "updated_at" in response.data
 
-    def test_wallsection_fields_exist(self, api_client: APIClient) -> None:
+    def test_wallsection_fields_exist(self, api_client: APIClient, simulation: Simulation) -> None:
         """Test WallSection model has all required fields."""
         # Create profile first
         profile_url = reverse("profile-list")
         profile_response = api_client.post(
             profile_url,
-            {"name": "Test", "team_lead": "Lead"},
+            {"simulation": simulation.id, "name": "Test", "team_lead": "Lead"},
             format="json",
         )
         profile_id = profile_response.data["id"]

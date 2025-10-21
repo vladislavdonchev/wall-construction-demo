@@ -6,6 +6,8 @@ import pytest
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from apps.profiles.models import Simulation
+
 
 @pytest.mark.django_db
 @pytest.mark.integration
@@ -24,12 +26,12 @@ class TestEdgeCases:
         assert "start_date" in response.data
         assert "YYYY-MM-DD format" in str(response.data["start_date"])
 
-    def test_overview_by_day_with_no_simulation_data(self, api_client: APIClient) -> None:
+    def test_overview_by_day_with_no_simulation_data(self, api_client: APIClient, simulation: Simulation) -> None:
         """Test profile-specific /overview/<day>/ returns 404 when profile has no simulation data."""
         # Create a profile but run no simulation
         profile_response = api_client.post(
             "/api/profiles/",
-            {"name": "Test Profile", "team_lead": "Test Lead"},
+            {"simulation": simulation.id, "name": "Test Profile", "team_lead": "Test Lead"},
             format="json",
         )
         profile_id = profile_response.data["id"]

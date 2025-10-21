@@ -16,6 +16,7 @@ ALLOWED_HOSTS: list[str] = [
     "localhost",
     "127.0.0.1",
     "192.168.50.66",
+    "46.10.161.171",
     "wall-api-demo",
 ]
 
