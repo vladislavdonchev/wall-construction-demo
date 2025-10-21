@@ -696,26 +696,6 @@ total_ice = sum(DailyProgress.objects.filter(wall_section__in=wall_sections).val
 
 ---
 
-### 6. Logo Placement in Frontend
-
-**Decision**: Store logo in `frontend/public/` and reference as `/wall-constructor.png`
-
-**Alternatives Considered**:
-- Import logo as React component (SVG)
-- Store in `frontend/src/assets/` and import via Vite
-- Base64 encode logo in CSS
-
-**Rationale**:
-- ✅ **Vite automatic copy**: Files in `public/` copied to `dist/` during build
-- ✅ **Simple references**: `<img src="/wall-constructor.png" />` works in production
-- ✅ **Cacheable**: Browser caches static image separately from JS bundle
-- ✅ **No build transformation**: PNG served as-is, no compression/optimization
-- ❌ **Not tree-shakeable**: Logo included even if unused
-
-**Conclusion**: Public directory optimal for static assets referenced by absolute path
-
----
-
 ## Summary
 
 This architecture achieves the following goals:

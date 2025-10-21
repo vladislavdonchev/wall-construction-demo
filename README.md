@@ -14,6 +14,20 @@ A full-stack application for tracking multi-profile wall construction operations
 - **Interactive GUI**: React frontend with simulation forms, results visualization, and charts
 - **Team Activity Logs**: File-based logs tracking team construction progress
 
+## Future Improvements
+
+**Note**: This is a demonstration project. Potential enhancements for production use include:
+- PostgreSQL database for better concurrency and replication
+- Redis caching for frequently accessed simulation results
+- WebSocket support for real-time simulation progress updates
+- User authentication and authorization
+- API rate limiting and throttling
+- Horizontal scaling with load balancing
+- Celery task queue for long-running simulations
+- Comprehensive logging and monitoring (Prometheus, Grafana)
+- CI/CD pipeline with automated deployment
+- Docker Compose setup for multi-container orchestration
+
 ## API Endpoints
 
 ### Simulation
