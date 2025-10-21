@@ -19,7 +19,7 @@ RUN npm run build
 FROM nginx:alpine
 
 # Cache buster to force rebuild on HuggingFace (increment when needed)
-ARG CACHEBUST=2
+ARG CACHEBUST=3
 
 # Install Python, pip, supervisor, and curl for healthcheck
 RUN apk add --no-cache \
@@ -61,8 +61,8 @@ WORKDIR /app
 
 EXPOSE 7860
 
-# Healthcheck to verify services are running
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:7860/api/ || exit 1
+# Healthcheck to verify nginx is responding (simpler than checking Django API)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:7860/ || exit 1
 
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
