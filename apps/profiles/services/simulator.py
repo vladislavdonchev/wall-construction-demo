@@ -120,8 +120,12 @@ class WallSimulator:
 
         self._log_relief()
 
-        total_ice = sum(DailyProgress.objects.all().values_list("ice_cubic_yards", flat=True))
-        total_cost = sum(DailyProgress.objects.all().values_list("cost_gold_dragons", flat=True))
+        # Get all wall sections for this simulation
+        wall_sections = WallSection.objects.filter(profile__simulation=simulation)
+
+        # Sum totals for THIS simulation only, not all simulations
+        total_ice = sum(DailyProgress.objects.filter(wall_section__in=wall_sections).values_list("ice_cubic_yards", flat=True))
+        total_cost = sum(DailyProgress.objects.filter(wall_section__in=wall_sections).values_list("cost_gold_dragons", flat=True))
 
         return SimulationSummary(
             total_days=day - 1,

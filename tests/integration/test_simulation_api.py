@@ -228,3 +228,49 @@ class TestSimulationAPI:
 
         overview_response = api_client.get("/profiles/overview/")
         assert overview_response.status_code == status.HTTP_200_OK
+
+    def test_multiple_simulations_dont_interfere(
+        self,
+        api_client: APIClient,
+    ) -> None:
+        """Test that running multiple simulations returns correct totals for each.
+
+        Bug reproduction: simulator.py sums ALL DailyProgress records instead of
+        filtering by the current simulation, causing totals to accumulate across
+        multiple simulation runs.
+        """
+        # First simulation: 2 sections of height 5
+        # Each section needs 25 feet (30 - 5)
+        # Total ice: 2 sections * 25 feet * 195 = 9750 cubic yards
+        # Total cost: 9750 * 1900 = 18,525,000 GD
+        first_config = {
+            "config": "5 5",
+            "num_teams": 2,
+            "start_date": "2025-10-20",
+        }
+        first_response = api_client.post("/profiles/simulate/", first_config, format="json")
+        assert first_response.status_code == status.HTTP_201_CREATED
+        assert first_response.data["total_sections"] == 2
+        # With 2 teams working on 2 sections, it takes 25 days
+        assert first_response.data["total_days"] == 25
+        assert first_response.data["total_ice_cubic_yards"] == "9750.00"
+        assert first_response.data["total_cost_gold_dragons"] == "18525000.00"
+
+        # Second simulation: 1 section of height 5
+        # Needs 25 feet (30 - 5)
+        # Total ice: 1 section * 25 feet * 195 = 4875 cubic yards
+        # Total cost: 4875 * 1900 = 9,262,500 GD
+        second_config = {
+            "config": "5",
+            "num_teams": 1,
+            "start_date": "2025-11-01",
+        }
+        second_response = api_client.post("/profiles/simulate/", second_config, format="json")
+        assert second_response.status_code == status.HTTP_201_CREATED
+        assert second_response.data["total_sections"] == 1
+        assert second_response.data["total_days"] == 25
+        # BUG: These assertions will FAIL if simulator sums all DailyProgress records
+        # Expected: only second simulation totals
+        # Actual (with bug): sum of first + second simulation totals
+        assert second_response.data["total_ice_cubic_yards"] == "4875.00"
+        assert second_response.data["total_cost_gold_dragons"] == "9262500.00"
