@@ -62,7 +62,8 @@ class TestSimulationAPI:
         response = api_client.post("/api/profiles/simulate/", config_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Invalid config format" in response.data["error"]
+        assert "config" in response.data
+        assert "Invalid config format" in str(response.data["config"])
 
     def test_simulate_endpoint_requires_config(
         self,
@@ -76,7 +77,8 @@ class TestSimulationAPI:
         response = api_client.post("/api/profiles/simulate/", config_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "config parameter is required" in response.data["error"]
+        assert "config" in response.data
+        assert "config parameter is required" in str(response.data["config"])
 
     def test_simulate_endpoint_validates_num_teams(
         self,
@@ -91,7 +93,8 @@ class TestSimulationAPI:
         response = api_client.post("/api/profiles/simulate/", config_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "positive integer" in response.data["error"]
+        assert "num_teams" in response.data
+        assert "positive integer" in str(response.data["num_teams"])
 
     def test_days_endpoint_returns_ice_usage(
         self,

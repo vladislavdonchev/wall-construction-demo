@@ -21,7 +21,8 @@ class TestEdgeCases:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "start_date must be in YYYY-MM-DD format" in response.data["error"]
+        assert "start_date" in response.data
+        assert "YYYY-MM-DD format" in str(response.data["start_date"])
 
     def test_overview_by_day_with_no_simulation_data(self, api_client: APIClient) -> None:
         """Test profile-specific /overview/<day>/ returns 404 when profile has no simulation data."""
@@ -37,4 +38,5 @@ class TestEdgeCases:
         response = api_client.get(f"/api/profiles/{profile_id}/overview/1/")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert "No simulation data for this profile" in response.data["error"]
+        assert "detail" in response.data
+        assert "No simulation data for this profile" in response.data["detail"]
