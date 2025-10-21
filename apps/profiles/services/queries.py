@@ -100,3 +100,27 @@ class ReportingQueries:
 
         aggregates = progress_qs.aggregate(total_cost=Sum("cost_gold_dragons"))
         return Decimal("0.00") if aggregates["total_cost"] is None else aggregates["total_cost"]
+
+    @staticmethod
+    def get_total_days(profile: Profile | None = None) -> int:
+        """Calculate total construction days from progress data.
+
+        Args:
+            profile: Optional profile to filter by (None = all profiles)
+
+        Returns:
+            Total number of construction days (0 if no data)
+        """
+        first_progress = ReportingQueries.get_first_progress_date(profile)
+        if not first_progress:
+            return 0
+
+        if profile:
+            last_progress = DailyProgress.objects.filter(wall_section__profile=profile).order_by("-date").first()
+        else:
+            last_progress = DailyProgress.objects.order_by("-date").first()
+
+        if not last_progress:
+            return 0
+
+        return (last_progress.date - first_progress.date).days + 1

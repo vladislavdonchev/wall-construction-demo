@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Card from '../components/Card'
 import Spinner from '../components/Spinner'
 import { api } from '../utils/api'
+import { formatNumber } from '../utils/format'
 
 export default function SimulationResults({ navigate }) {
   const [loading, setLoading] = useState(true)
@@ -56,7 +57,7 @@ export default function SimulationResults({ navigate }) {
         <Card>
           <h3 className="text-lg font-semibold mb-2">Total Cost</h3>
           <p className="text-4xl font-bold text-[var(--color-gold)]">
-            {data.cost} GD
+            {formatNumber(data.cost)} GD
           </p>
           <p className="text-sm text-gray-500 mt-2">Gold Dragons</p>
         </Card>
@@ -64,7 +65,7 @@ export default function SimulationResults({ navigate }) {
         <Card>
           <h3 className="text-lg font-semibold mb-2">Completion Time</h3>
           <p className="text-4xl font-bold text-blue-600">
-            {data.day || 'N/A'} {data.day === '1' ? 'day' : 'days'}
+            {data.day || 'N/A'} {data.day === 1 ? 'day' : 'days'}
           </p>
           <p className="text-sm text-gray-500 mt-2">Total construction time</p>
         </Card>
@@ -74,7 +75,7 @@ export default function SimulationResults({ navigate }) {
         <h3 className="text-lg font-semibold mb-4">Construction Overview</h3>
         <p className="text-gray-600">
           The simulation has been completed successfully. Total cost for the entire
-          construction project is <strong>{data.cost} Gold Dragons</strong>.
+          construction project is <strong>{formatNumber(data.cost)} Gold Dragons</strong>.
         </p>
       </Card>
     </div>

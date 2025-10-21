@@ -15,72 +15,51 @@ COPY frontend/ ./
 # Build React app
 RUN npm run build
 
-# Stage 2: Setup Python/Django backend
-FROM python:3.12-alpine AS backend
-
-WORKDIR /app
-
-# Install build dependencies for Python packages
-RUN apk add --no-cache gcc musl-dev linux-headers
-
-# Install uv package manager
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-
-# Set uv environment variables
-ENV UV_LINK_MODE=copy
-ENV UV_PROJECT_ENVIRONMENT=/app/.venv
-
-# Copy dependency files
-COPY pyproject.toml ./
-COPY uv.lock ./
-
-# Install dependencies using uv
-RUN uv sync --frozen
-
-# Copy application code
-COPY . .
-
-# Stage 3: Final image with nginx
+# Stage 2: Final image with nginx and Python
 FROM nginx:alpine
 
-# Install Python and supervisor
-RUN apk add --no-cache python3 py3-pip supervisor
+# Install Python, pip, supervisor, and curl for healthcheck
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    supervisor \
+    curl \
+    gcc \
+    python3-dev \
+    musl-dev \
+    linux-headers
 
-# Copy Python app and venv from backend stage
-COPY --from=backend /app /app
-COPY --from=backend /usr/local/bin/uv /usr/local/bin/uv
+# Install Python dependencies system-wide
+RUN pip3 install --no-cache-dir --break-system-packages \
+    Django==5.2.7 \
+    djangorestframework==3.16.0 \
+    django-filter==24.3 \
+    pydantic==2.10.6 \
+    gunicorn==23.0.0 \
+    loguru==0.7.3
 
 # Copy React build from frontend stage
 COPY --from=frontend-builder /frontend/dist /usr/share/nginx/html
 
-# Copy nginx configuration
+# Copy application code
+COPY . /app
+
+# Copy configuration files
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY supervisord.conf /etc/supervisor/supervisord.conf
 
 # Make startup script executable
 RUN chmod +x /app/start-django.sh
 
-# Create supervisor config directory and file
-RUN mkdir -p /etc/supervisor/conf.d && \
-    echo '[supervisord]' > /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'nodaemon=true' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo '' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo '[program:django]' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'command=/app/start-django.sh' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'directory=/app' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'stdout_logfile=/dev/stdout' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'stdout_logfile_maxbytes=0' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'stderr_logfile=/dev/stderr' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'stderr_logfile_maxbytes=0' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo '' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo '[program:nginx]' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'command=nginx -g "daemon off;"' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf
+# Create /app marker for container detection
+RUN mkdir -p /app && touch /app/.container
 
 WORKDIR /app
 
 EXPOSE 7860
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Healthcheck to verify services are running
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:7860/api/ || exit 1
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]

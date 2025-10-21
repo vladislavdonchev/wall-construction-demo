@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 from decimal import Decimal
@@ -60,16 +61,18 @@ class WallSimulator:
     SQLite compatibility through main-thread-only database operations.
     """
 
-    def __init__(self, num_teams: int, log_dir: str = "logs"):
+    def __init__(self, num_teams: int, log_dir: str | None = None):
         """Initialize simulator with team pool.
 
         Args:
             num_teams: Number of parallel teams (workers)
-            log_dir: Directory for team log files
+            log_dir: Directory for team log files (default: system temp directory + logs)
         """
         self.num_teams = num_teams
+        if log_dir is None:
+            log_dir = str(Path(tempfile.gettempdir()) / "logs")
         self.log_dir = Path(log_dir)
-        self.log_dir.mkdir(exist_ok=True)
+        self.log_dir.mkdir(parents=True, exist_ok=True)
 
         for team_id in range(num_teams):
             log_file = self.log_dir / f"team_{team_id}.log"

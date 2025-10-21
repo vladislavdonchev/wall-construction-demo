@@ -25,11 +25,25 @@ async function request(endpoint, options = {}) {
     const data = await response.json()
 
     if (!response.ok) {
-      throw new ApiError(
-        data.message || 'Request failed',
-        response.status,
-        data
-      )
+      // Parse Django REST Framework field-specific validation errors
+      let message = 'Request failed'
+      if (typeof data === 'object' && data !== null) {
+        const errors = []
+        for (const [field, value] of Object.entries(data)) {
+          if (Array.isArray(value)) {
+            errors.push(...value)
+          } else if (typeof value === 'string') {
+            errors.push(value)
+          }
+        }
+        if (errors.length > 0) {
+          message = errors.join('. ')
+        } else if (data.message) {
+          message = data.message
+        }
+      }
+
+      throw new ApiError(message, response.status, data)
     }
 
     return data

@@ -84,15 +84,16 @@ class ReportingMixin:
 
     @action(detail=False, methods=["get"], url_path="overview")
     def overview_total(self, _request: Request) -> Response:
-        """Get total cost for entire construction.
+        """Get total cost and days for entire construction.
 
         Spec-compliant endpoint: GET /profiles/overview/
         """
         total_cost = ReportingQueries.get_cost_overview(None, None)
+        total_days = ReportingQueries.get_total_days(None)
 
         return Response(
             {
-                "day": None,
+                "day": total_days,
                 "cost": str(total_cost),
             }
         )
