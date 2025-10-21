@@ -7,11 +7,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
 
 from apps.profiles.constants import COST_PER_CUBIC_YARD, ICE_PER_FOOT, TARGET_HEIGHT
 from apps.profiles.models import DailyProgress, Profile, WallSection
+
+if TYPE_CHECKING:
+    from apps.profiles.models import Simulation
 
 
 class ProfileConfig(BaseModel):
@@ -82,17 +86,19 @@ class WallSimulator:
         self,
         profiles_config: list[ProfileConfig],
         start_date: date,
+        simulation: Simulation,
     ) -> SimulationSummary:
         """Run complete wall construction simulation.
 
         Args:
             profiles_config: List of profile configs with name and heights
             start_date: Simulation start date
+            simulation: Simulation model instance to link profiles to
 
         Returns:
             Summary statistics (total days, sections, ice, cost)
         """
-        section_data = self._initialize_profiles(profiles_config)
+        section_data = self._initialize_profiles(profiles_config, simulation)
 
         current_date = start_date
         day = 1
@@ -127,11 +133,13 @@ class WallSimulator:
     def _initialize_profiles(
         self,
         profiles_config: list[ProfileConfig],
+        simulation: Simulation,
     ) -> list[SectionData]:
         """Initialize profiles and sections in database, return in-memory state.
 
         Args:
             profiles_config: List of profile configurations
+            simulation: Simulation instance to link profiles to
 
         Returns:
             List of section data (plain dicts for thread-safe processing)
@@ -152,6 +160,7 @@ class WallSimulator:
             heights = config.heights
 
             profile = Profile.objects.create(
+                simulation=simulation,
                 name=profile_name,
                 team_lead=team_lead,
             )

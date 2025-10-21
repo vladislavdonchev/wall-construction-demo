@@ -66,6 +66,11 @@ export const api = {
     body: JSON.stringify({ config, num_teams: numTeams, start_date: startDate })
   }),
 
+  // Simulations (history)
+  getSimulations: () => request('/simulations/'),
+  getSimulation: (id) => request(`/simulations/${id}/`),
+  getSimulationOverview: (id) => request(`/simulations/${id}/overview/`),
+
   // Analytics
   getProfileDays: (id, day) => request(`/profiles/${id}/days/${day}/`),
   getProfileOverview: (id, day) => request(`/profiles/${id}/overview/${day}/`),

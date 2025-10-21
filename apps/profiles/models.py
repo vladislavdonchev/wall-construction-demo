@@ -5,10 +5,40 @@ from __future__ import annotations
 from django.db import models
 
 
+class Simulation(models.Model):
+    """Simulation run record tracking input parameters and results."""
+
+    config_text = models.TextField(help_text="Original wall config input")
+    num_teams = models.IntegerField(help_text="Number of construction teams")
+    start_date = models.DateField(help_text="Simulation start date")
+    total_days = models.IntegerField(help_text="Total construction days")
+    total_cost = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        help_text="Total cost in Gold Dragons",
+    )
+    total_sections = models.IntegerField(help_text="Total number of wall sections")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "simulations"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        """Return string representation of simulation."""
+        return f"Simulation #{self.id} ({self.start_date}, {self.num_teams} teams)"
+
+
 class Profile(models.Model):
     """Construction profile for wall building operations."""
 
-    name = models.CharField(max_length=255, unique=True)
+    simulation = models.ForeignKey(
+        Simulation,
+        on_delete=models.CASCADE,
+        related_name="profiles",
+        help_text="Simulation this profile belongs to",
+    )
+    name = models.CharField(max_length=255)
     team_lead = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -17,6 +47,7 @@ class Profile(models.Model):
     class Meta:
         db_table = "profiles"
         ordering = ["-created_at"]
+        unique_together = [["simulation", "name"]]
 
     def __str__(self) -> str:
         """Return string representation of profile."""

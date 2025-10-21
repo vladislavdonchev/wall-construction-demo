@@ -12,7 +12,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.profiles.constants import MAX_TEAMS, MIN_TEAMS
-from apps.profiles.models import Profile
+from apps.profiles.models import Simulation
 from apps.profiles.parsers import ConfigParser
 from apps.profiles.services.simulator import WallSimulator
 
@@ -85,19 +85,33 @@ class SimulationMixin:
         # Run simulation in atomic transaction to prevent data loss on errors
         # Transaction automatically rolls back on any exception
         with transaction.atomic():
-            # Clear previous simulation data to avoid unique constraint violations
-            # This cascades to WallSection and DailyProgress due to ForeignKey constraints
-            Profile.objects.all().delete()
-            logger.info(f"Cleared previous simulation data for {client_ip}")
+            # Create Simulation record
+            simulation = Simulation.objects.create(
+                config_text=config_text,
+                num_teams=num_teams,
+                start_date=start_date,
+                total_days=0,  # Will be updated after simulation
+                total_cost=0,  # Will be updated after simulation
+                total_sections=sum(len(p.heights) for p in profiles_config),
+            )
+            logger.info(f"Created simulation {simulation.id} for {client_ip}")
 
-            # Run simulation
+            # Run simulation with simulation_id to link profiles
             simulator = WallSimulator(num_teams=num_teams)
-            result = simulator.simulate(profiles_config, start_date)
+            result = simulator.simulate(profiles_config, start_date, simulation)
+
+            # Update simulation with final results
+            simulation.total_days = result.total_days
+            simulation.total_cost = result.total_cost_gold_dragons
+            simulation.save()
 
             logger.info(
-                f"Simulation completed successfully for {client_ip}: "
+                f"Simulation {simulation.id} completed successfully for {client_ip}: "
                 f"{result.total_sections} sections, {result.total_days} days, "
                 f"{result.total_cost_gold_dragons} GD"
             )
 
-        return Response(result.model_dump(), status=201)
+        # Return result with simulation ID
+        response_data = result.model_dump()
+        response_data["simulation_id"] = simulation.id
+        return Response(response_data, status=201)

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from apps.profiles.models import DailyProgress, Profile, WallSection
+from apps.profiles.models import DailyProgress, Profile, Simulation, WallSection
 from apps.profiles.services.simulator import ProfileConfig, SectionData, WallSimulator
 
 
@@ -16,22 +16,22 @@ from apps.profiles.services.simulator import ProfileConfig, SectionData, WallSim
 class TestWallSimulator:
     """Test cases for WallSimulator."""
 
-    def test_initialize_single_profile(self, tmp_path: Path) -> None:
+    def test_initialize_single_profile(self, simulation: Simulation, tmp_path: Path) -> None:
         """Test initializing simulator with single profile."""
         profiles_config = [ProfileConfig(heights=[21, 25, 28])]
 
         simulator = WallSimulator(num_teams=2, log_dir=str(tmp_path))
-        section_data = simulator._initialize_profiles(profiles_config)
+        section_data = simulator._initialize_profiles(profiles_config, simulation)
 
         assert len(section_data) == 3
-        assert Profile.objects.count() == 1
+        assert Profile.objects.filter(simulation=simulation).count() == 1
         assert WallSection.objects.count() == 3
 
-        profile = Profile.objects.first()
+        profile = Profile.objects.filter(simulation=simulation).first()
         assert profile is not None
         assert profile.name == "Profile 1"
 
-    def test_initialize_multiple_profiles(self, tmp_path: Path) -> None:
+    def test_initialize_multiple_profiles(self, simulation: Simulation, tmp_path: Path) -> None:
         """Test initializing simulator with multiple profiles."""
         profiles_config = [
             ProfileConfig(heights=[21, 25, 28]),
@@ -40,10 +40,10 @@ class TestWallSimulator:
         ]
 
         simulator = WallSimulator(num_teams=4, log_dir=str(tmp_path))
-        section_data = simulator._initialize_profiles(profiles_config)
+        section_data = simulator._initialize_profiles(profiles_config, simulation)
 
         assert len(section_data) == 9
-        assert Profile.objects.count() == 3
+        assert Profile.objects.filter(simulation=simulation).count() == 3
         assert WallSection.objects.count() == 9
 
     def test_assign_work_limits_by_teams(self, tmp_path: Path) -> None:
@@ -134,12 +134,12 @@ class TestWallSimulator:
         log_content = log_file.read_text()
         assert "completed" in log_content
 
-    def test_simulate_simple_profile(self, tmp_path: Path) -> None:
+    def test_simulate_simple_profile(self, simulation: Simulation, tmp_path: Path) -> None:
         """Test complete simulation with simple profile."""
         profiles_config = [ProfileConfig(heights=[28, 29])]
 
         simulator = WallSimulator(num_teams=2, log_dir=str(tmp_path))
-        result = simulator.simulate(profiles_config, date(2025, 10, 20))
+        result = simulator.simulate(profiles_config, date(2025, 10, 20), simulation)
 
         assert result.total_days == 2
         assert result.total_sections == 2
@@ -147,19 +147,19 @@ class TestWallSimulator:
         # 3 DailyProgress records: Day 1 both sections (28→29, 29→30), Day 2 first section only (29→30)
         assert DailyProgress.objects.count() == 3
 
-        profile = Profile.objects.first()
+        profile = Profile.objects.filter(simulation=simulation).first()
         assert profile is not None
 
         sections = WallSection.objects.filter(profile=profile)
         for section in sections:
             assert section.current_height == 30
 
-    def test_simulate_creates_logs(self, tmp_path: Path) -> None:
+    def test_simulate_creates_logs(self, simulation: Simulation, tmp_path: Path) -> None:
         """Test that simulation creates team log files."""
         profiles_config = [ProfileConfig(heights=[28])]
 
         simulator = WallSimulator(num_teams=2, log_dir=str(tmp_path))
-        simulator.simulate(profiles_config, date(2025, 10, 20))
+        simulator.simulate(profiles_config, date(2025, 10, 20), simulation)
 
         assert (tmp_path / "team_0.log").exists()
         assert (tmp_path / "team_1.log").exists()
@@ -167,12 +167,12 @@ class TestWallSimulator:
         log_content = (tmp_path / "team_0.log").read_text()
         assert "relieved" in log_content
 
-    def test_simulate_respects_team_limit(self, tmp_path: Path) -> None:
+    def test_simulate_respects_team_limit(self, simulation: Simulation, tmp_path: Path) -> None:
         """Test that simulation respects team limit."""
         profiles_config = [ProfileConfig(heights=[25, 25, 25, 25, 25])]
 
         simulator = WallSimulator(num_teams=2, log_dir=str(tmp_path))
-        simulator.simulate(profiles_config, date(2025, 10, 20))
+        simulator.simulate(profiles_config, date(2025, 10, 20), simulation)
 
         progress_by_day: dict[str, int] = {}
         for progress in DailyProgress.objects.all():
@@ -182,12 +182,12 @@ class TestWallSimulator:
         for count in progress_by_day.values():
             assert count <= 2
 
-    def test_simulate_with_varying_heights(self, tmp_path: Path) -> None:
+    def test_simulate_with_varying_heights(self, simulation: Simulation, tmp_path: Path) -> None:
         """Test simulation with varying initial heights."""
         profiles_config = [ProfileConfig(heights=[21, 25, 28, 30, 17])]
 
         simulator = WallSimulator(num_teams=3, log_dir=str(tmp_path))
-        result = simulator.simulate(profiles_config, date(2025, 10, 20))
+        result = simulator.simulate(profiles_config, date(2025, 10, 20), simulation)
 
         assert result.total_sections == 5
 

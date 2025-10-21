@@ -19,7 +19,7 @@ RUN npm run build
 FROM nginx:alpine
 
 # Cache buster to force rebuild on HuggingFace (increment when needed)
-ARG CACHEBUST=4
+ARG CACHEBUST=6
 
 # Install Python, pip, supervisor, and curl for healthcheck
 RUN apk add --no-cache \
@@ -32,8 +32,11 @@ RUN apk add --no-cache \
     musl-dev \
     linux-headers
 
-# Install Python dependencies system-wide
-RUN pip3 install --no-cache-dir --break-system-packages \
+# Create venv and install dependencies
+RUN python3 -m venv /app/.venv
+
+# Install Python dependencies in venv
+RUN /app/.venv/bin/pip install --no-cache-dir \
     Django==5.2.7 \
     djangorestframework==3.16.0 \
     django-filter==24.3 \

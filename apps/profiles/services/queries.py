@@ -67,12 +67,14 @@ class ReportingQueries:
 
     @staticmethod
     def get_cost_overview(
+        simulation_id: int | None,
         profile: Profile | None,
         day_num: int | None,
     ) -> Decimal:
         """Get total cost for profile(s) up to a specific day.
 
         Args:
+            simulation_id: Optional simulation to filter by (None = all simulations)
             profile: Optional profile to filter by (None = all profiles)
             day_num: Optional day number to limit (None = all days)
 
@@ -85,27 +87,34 @@ class ReportingQueries:
 
         progress_qs: QuerySet[DailyProgress]
 
+        # Build base query with simulation filter if provided
+        if simulation_id:
+            wall_sections_base = WallSection.objects.filter(profile__simulation_id=simulation_id)
+        else:
+            wall_sections_base = WallSection.objects.all()
+
         if profile and day_num:
             end_date = first_progress.date + timedelta(days=day_num - 1)
-            wall_sections = WallSection.objects.filter(profile=profile)
+            wall_sections = wall_sections_base.filter(profile=profile)
             progress_qs = DailyProgress.objects.filter(wall_section__in=wall_sections, date__lte=end_date)
         elif profile:
-            wall_sections = WallSection.objects.filter(profile=profile)
+            wall_sections = wall_sections_base.filter(profile=profile)
             progress_qs = DailyProgress.objects.filter(wall_section__in=wall_sections)
         elif day_num:
             end_date = first_progress.date + timedelta(days=day_num - 1)
-            progress_qs = DailyProgress.objects.filter(date__lte=end_date)
+            progress_qs = DailyProgress.objects.filter(wall_section__in=wall_sections_base, date__lte=end_date)
         else:
-            progress_qs = DailyProgress.objects.all()
+            progress_qs = DailyProgress.objects.filter(wall_section__in=wall_sections_base)
 
         aggregates = progress_qs.aggregate(total_cost=Sum("cost_gold_dragons"))
         return Decimal("0.00") if aggregates["total_cost"] is None else aggregates["total_cost"]
 
     @staticmethod
-    def get_total_days(profile: Profile | None = None) -> int:
+    def get_total_days(simulation_id: int | None = None, profile: Profile | None = None) -> int:
         """Calculate total construction days from progress data.
 
         Args:
+            simulation_id: Optional simulation to filter by (None = all simulations)
             profile: Optional profile to filter by (None = all profiles)
 
         Returns:
@@ -115,8 +124,11 @@ class ReportingQueries:
         if not first_progress:
             return 0
 
+        # Build query based on filters
         if profile:
             last_progress = DailyProgress.objects.filter(wall_section__profile=profile).order_by("-date").first()
+        elif simulation_id:
+            last_progress = DailyProgress.objects.filter(wall_section__profile__simulation_id=simulation_id).order_by("-date").first()
         else:
             last_progress = DailyProgress.objects.order_by("-date").first()
 

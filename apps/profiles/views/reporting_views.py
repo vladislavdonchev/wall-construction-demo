@@ -52,7 +52,7 @@ class ReportingMixin:
         if not first_progress:
             raise NotFound("No simulation data for this profile")
 
-        total_cost = ReportingQueries.get_cost_overview(profile, day_num)
+        total_cost = ReportingQueries.get_cost_overview(None, profile, day_num)
 
         return Response(
             {
@@ -73,7 +73,7 @@ class ReportingMixin:
         if not first_progress:
             raise NotFound("No simulation data")
 
-        total_cost = ReportingQueries.get_cost_overview(None, day_num)
+        total_cost = ReportingQueries.get_cost_overview(None, None, day_num)
 
         return Response(
             {
@@ -88,8 +88,8 @@ class ReportingMixin:
 
         Spec-compliant endpoint: GET /profiles/overview/
         """
-        total_cost = ReportingQueries.get_cost_overview(None, None)
-        total_days = ReportingQueries.get_total_days(None)
+        total_cost = ReportingQueries.get_cost_overview(None, None, None)
+        total_days = ReportingQueries.get_total_days(None, None)
 
         return Response(
             {

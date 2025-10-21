@@ -9,16 +9,17 @@ import pytest
 from django.db import IntegrityError
 
 from apps.profiles.constants import COST_PER_CUBIC_YARD, ICE_PER_FOOT
-from apps.profiles.models import DailyProgress, Profile, WallSection
+from apps.profiles.models import DailyProgress, Profile, Simulation, WallSection
 
 
 @pytest.mark.django_db
 class TestProfileModel:
     """Test Profile model functionality."""
 
-    def test_create_profile_success(self) -> None:
+    def test_create_profile_success(self, simulation: Simulation) -> None:
         """Test creating a profile with valid data."""
         profile = Profile.objects.create(
+            simulation=simulation,
             name="Northern Watch",
             team_lead="Jon Snow",
             is_active=True,
@@ -31,16 +32,16 @@ class TestProfileModel:
         assert profile.created_at is not None
         assert profile.updated_at is not None
 
-    def test_profile_name_unique(self) -> None:
-        """Test profile name must be unique."""
-        Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+    def test_profile_name_unique(self, simulation: Simulation) -> None:
+        """Test profile name must be unique within same simulation."""
+        Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
 
         with pytest.raises(IntegrityError):
-            Profile.objects.create(name="Northern Watch", team_lead="Samwell Tarly")
+            Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Samwell Tarly")
 
-    def test_profile_str_representation(self) -> None:
+    def test_profile_str_representation(self, simulation: Simulation) -> None:
         """Test profile string representation."""
-        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile = Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
 
         assert str(profile) == "Northern Watch (led by Jon Snow)"
 
@@ -49,9 +50,9 @@ class TestProfileModel:
 class TestWallSectionModel:
     """Test WallSection model functionality."""
 
-    def test_create_wall_section_success(self) -> None:
+    def test_create_wall_section_success(self, simulation: Simulation) -> None:
         """Test creating a wall section with valid data."""
-        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile = Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
@@ -61,9 +62,9 @@ class TestWallSectionModel:
         assert wall_section.profile == profile
         assert wall_section.section_name == "Tower 1-2"
 
-    def test_wall_section_str_representation(self) -> None:
+    def test_wall_section_str_representation(self, simulation: Simulation) -> None:
         """Test wall section string representation."""
-        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile = Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
@@ -76,9 +77,9 @@ class TestWallSectionModel:
 class TestDailyProgressModel:
     """Test DailyProgress model functionality."""
 
-    def test_create_daily_progress_with_calculated_values(self) -> None:
+    def test_create_daily_progress_with_calculated_values(self, simulation: Simulation) -> None:
         """Test creating daily progress with explicitly calculated ice and cost values."""
-        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile = Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
@@ -99,9 +100,9 @@ class TestDailyProgressModel:
         assert progress.ice_cubic_yards == Decimal("1950.00")
         assert progress.cost_gold_dragons == Decimal("3705000.00")
 
-    def test_daily_progress_unique_per_wall_section_and_date(self) -> None:
+    def test_daily_progress_unique_per_wall_section_and_date(self, simulation: Simulation) -> None:
         """Test only one progress entry allowed per wall section per day."""
-        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile = Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",
@@ -124,9 +125,9 @@ class TestDailyProgressModel:
                 cost_gold_dragons=Decimal("1852500.00"),
             )
 
-    def test_daily_progress_str_representation(self) -> None:
+    def test_daily_progress_str_representation(self, simulation: Simulation) -> None:
         """Test daily progress string representation."""
-        profile = Profile.objects.create(name="Northern Watch", team_lead="Jon Snow")
+        profile = Profile.objects.create(simulation=simulation, name="Northern Watch", team_lead="Jon Snow")
         wall_section = WallSection.objects.create(
             profile=profile,
             section_name="Tower 1-2",

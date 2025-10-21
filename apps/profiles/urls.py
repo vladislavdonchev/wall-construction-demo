@@ -10,11 +10,13 @@ from apps.profiles.views.profile_views import (
     ProfileViewSet,
     WallSectionViewSet,
 )
+from apps.profiles.views.simulations import SimulationViewSet
 
 router = DefaultRouter()
 router.register(r"profiles", ProfileViewSet, basename="profile")
 router.register(r"wallsections", WallSectionViewSet, basename="wallsection")
 router.register(r"progress", DailyProgressViewSet, basename="dailyprogress")
+router.register(r"simulations", SimulationViewSet, basename="simulation")
 
 urlpatterns = [
     path("", include(router.urls)),
