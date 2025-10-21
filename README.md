@@ -1,5 +1,7 @@
 # Wall Construction Tracker
 
+![Wall Construction Tracker Demo](res/demo.png)
+
 A full-stack application for tracking multi-profile wall construction operations, ice material consumption, and associated costs. Features a React GUI frontend and Django REST API backend.
 
 ## Features
