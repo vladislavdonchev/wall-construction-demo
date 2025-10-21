@@ -11,7 +11,13 @@ SECRET_KEY = "django-insecure-demo-key-replace-in-production"
 
 DEBUG = True
 
-ALLOWED_HOSTS: list[str] = ["aivlad-demo.hf.space", "localhost", "127.0.0.1"]
+ALLOWED_HOSTS: list[str] = [
+    "aivlad-demo.hf.space",
+    "localhost",
+    "127.0.0.1",
+    "192.168.50.66",
+    "wall-api-demo",
+]
 
 INSTALLED_APPS = [
     "django.contrib.auth",

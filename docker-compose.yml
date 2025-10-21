@@ -1,0 +1,6 @@
+services:
+  demo:
+    image: wall-api:latest
+    ports:
+      - "7860:7860"
+    container_name: wall-api-demo

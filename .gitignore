@@ -8,6 +8,7 @@ frontend/dist/
 .coverage
 __pycache__/
 *.pyc
+.cache/
 
 # Database
 db.sqlite3
