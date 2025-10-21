@@ -11,6 +11,9 @@ SECRET_KEY = "django-insecure-demo-key-replace-in-production"
 
 DEBUG = True
 
+# Trust X-Forwarded-Port header from nginx proxy
+USE_X_FORWARDED_PORT = True
+
 ALLOWED_HOSTS: list[str] = [
     "aivlad-demo.hf.space",
     "localhost",

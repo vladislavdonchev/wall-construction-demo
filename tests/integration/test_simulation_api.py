@@ -24,7 +24,7 @@ class TestSimulationAPI:
             "start_date": "2025-10-20",
         }
 
-        response = api_client.post("/api/profiles/simulate/", config_data, format="json")
+        response = api_client.post("/profiles/simulate/", config_data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
         assert Profile.objects.count() == 3
@@ -41,7 +41,7 @@ class TestSimulationAPI:
             "start_date": "2025-10-20",
         }
 
-        response = api_client.post("/api/profiles/simulate/", config_data, format="json")
+        response = api_client.post("/profiles/simulate/", config_data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
         assert DailyProgress.objects.count() > 0
@@ -59,7 +59,7 @@ class TestSimulationAPI:
             "num_teams": 2,
         }
 
-        response = api_client.post("/api/profiles/simulate/", config_data, format="json")
+        response = api_client.post("/profiles/simulate/", config_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "config" in response.data
@@ -74,7 +74,7 @@ class TestSimulationAPI:
             "num_teams": 2,
         }
 
-        response = api_client.post("/api/profiles/simulate/", config_data, format="json")
+        response = api_client.post("/profiles/simulate/", config_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "config" in response.data
@@ -90,7 +90,7 @@ class TestSimulationAPI:
             "num_teams": -1,
         }
 
-        response = api_client.post("/api/profiles/simulate/", config_data, format="json")
+        response = api_client.post("/profiles/simulate/", config_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "num_teams" in response.data
@@ -107,12 +107,12 @@ class TestSimulationAPI:
             "start_date": "2025-10-20",
         }
 
-        api_client.post("/api/profiles/simulate/", config_data, format="json")
+        api_client.post("/profiles/simulate/", config_data, format="json")
 
         profile = Profile.objects.first()
         assert profile is not None
 
-        response = api_client.get(f"/api/profiles/{profile.id}/days/1/")
+        response = api_client.get(f"/profiles/{profile.id}/days/1/")
 
         assert response.status_code == status.HTTP_200_OK
         assert "day" in response.data
@@ -131,7 +131,7 @@ class TestSimulationAPI:
         """Test days endpoint returns 404 when no simulation data."""
         profile = Profile.objects.create(simulation=simulation, name="Test", team_lead="Lead")
 
-        response = api_client.get(f"/api/profiles/{profile.id}/days/1/")
+        response = api_client.get(f"/profiles/{profile.id}/days/1/")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -146,12 +146,12 @@ class TestSimulationAPI:
             "start_date": "2025-10-20",
         }
 
-        api_client.post("/api/profiles/simulate/", config_data, format="json")
+        api_client.post("/profiles/simulate/", config_data, format="json")
 
         profile = Profile.objects.first()
         assert profile is not None
 
-        response = api_client.get(f"/api/profiles/{profile.id}/overview/1/")
+        response = api_client.get(f"/profiles/{profile.id}/overview/1/")
 
         assert response.status_code == status.HTTP_200_OK
         assert "day" in response.data
@@ -169,9 +169,9 @@ class TestSimulationAPI:
             "start_date": "2025-10-20",
         }
 
-        api_client.post("/api/profiles/simulate/", config_data, format="json")
+        api_client.post("/profiles/simulate/", config_data, format="json")
 
-        response = api_client.get("/api/profiles/overview/1/")
+        response = api_client.get("/profiles/overview/1/")
 
         assert response.status_code == status.HTTP_200_OK
         assert "day" in response.data
@@ -193,9 +193,9 @@ class TestSimulationAPI:
             "start_date": "2025-10-20",
         }
 
-        api_client.post("/api/profiles/simulate/", config_data, format="json")
+        api_client.post("/profiles/simulate/", config_data, format="json")
 
-        response = api_client.get("/api/profiles/overview/")
+        response = api_client.get("/profiles/overview/")
 
         assert response.status_code == status.HTTP_200_OK
         assert "day" in response.data
@@ -215,16 +215,16 @@ class TestSimulationAPI:
             "start_date": "2025-10-20",
         }
 
-        response = api_client.post("/api/profiles/simulate/", config_data, format="json")
+        response = api_client.post("/profiles/simulate/", config_data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["total_sections"] == 9
 
         profile_1 = Profile.objects.get(name="Profile 1")
 
-        day_1_response = api_client.get(f"/api/profiles/{profile_1.id}/days/1/")
+        day_1_response = api_client.get(f"/profiles/{profile_1.id}/days/1/")
         assert day_1_response.status_code == status.HTTP_200_OK
         assert day_1_response.data["total_ice_cubic_yards"] == "585"
 
-        overview_response = api_client.get("/api/profiles/overview/")
+        overview_response = api_client.get("/profiles/overview/")
         assert overview_response.status_code == status.HTTP_200_OK

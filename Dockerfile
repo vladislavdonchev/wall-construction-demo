@@ -19,7 +19,7 @@ RUN npm run build
 FROM nginx:alpine
 
 # Cache buster to force rebuild on HuggingFace (increment when needed)
-ARG CACHEBUST=14
+ARG CACHEBUST=16
 
 # Install Python, pip, supervisor, and curl for healthcheck
 RUN apk add --no-cache \

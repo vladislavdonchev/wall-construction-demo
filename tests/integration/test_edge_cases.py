@@ -17,7 +17,7 @@ class TestEdgeCases:
     def test_simulate_with_invalid_start_date_format(self, api_client: APIClient) -> None:
         """Test /simulate/ rejects invalid start_date format."""
         response = api_client.post(
-            "/api/profiles/simulate/",
+            "/profiles/simulate/",
             {"config": "5", "num_teams": 10, "start_date": "invalid-date"},
             format="json",
         )
@@ -30,14 +30,14 @@ class TestEdgeCases:
         """Test profile-specific /overview/<day>/ returns 404 when profile has no simulation data."""
         # Create a profile but run no simulation
         profile_response = api_client.post(
-            "/api/profiles/",
+            "/profiles/",
             {"simulation": simulation.id, "name": "Test Profile", "team_lead": "Test Lead"},
             format="json",
         )
         profile_id = profile_response.data["id"]
 
         # Request overview for day 1
-        response = api_client.get(f"/api/profiles/{profile_id}/overview/1/")
+        response = api_client.get(f"/profiles/{profile_id}/overview/1/")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert "detail" in response.data
